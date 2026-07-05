@@ -10,34 +10,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #EDF1F1;
+    --bg: #EEF0F1;
     --surface: #FFFFFF;
-    --ink: #16262D;
-    --ink-soft: #53686F;
-    --ink-muted: #8A9BA1;
-    --line: #D6E0E0;
-    --line-strong: #B9C7C7;
-    --accent: #1F4B5E;
-    --accent-soft: #E4EDF0;
-    --rain: #2F6FA6;
-    --tide: #3C8F7A;
+    --ink: #2D2E32;
+    --ink-soft: #53565A;
+    --ink-muted: #8B8E92;
+    --line: #DEE0E2;
+    --line-strong: #C7CACD;
+    --accent: #175787;
+    --accent-soft: #E3EDF3;
+    --rain: #3E8DD6;
+    --tide: #F288DE;
     --danger: #B23A2F;
     --danger-bg: #FAE7E4;
     --radius: 10px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #101A1D;
-      --surface: #172427;
-      --ink: #E7EEEE;
-      --ink-soft: #9FB2B6;
-      --ink-muted: #6C8085;
-      --line: #2A3A3D;
-      --line-strong: #3C4E51;
-      --accent: #7FB2C7;
-      --accent-soft: #1E3238;
-      --rain: #7BB8E8;
-      --tide: #6BCBAF;
+      --bg: #131417;
+      --surface: #2D2E32;
+      --ink: #ECEDEE;
+      --ink-soft: #B7B9BC;
+      --ink-muted: #85888C;
+      --line: #3F4247;
+      --line-strong: #53565A;
+      --accent: #3E8DD6;
+      --accent-soft: #1C3040;
+      --rain: #3E8DD6;
+      --tide: #F288DE;
       --danger: #E3766A;
       --danger-bg: #3A211E;
     }
@@ -289,6 +289,20 @@ const LOCATIONS = [
     weather: { lat: -33.8688, lon: 151.2093 },
     marine: { lat: -33.891, lon: 151.277, label: 'Bondi Beach' },
     marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.'
+  },
+  {
+    id: 'perth',
+    name: 'Perth',
+    weather: { lat: -31.9523, lon: 115.8613 },
+    marine: { lat: -31.9959, lon: 115.7581, label: 'Cottesloe Beach' },
+    marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.'
+  },
+  {
+    id: 'brisbane',
+    name: 'Brisbane',
+    weather: { lat: -27.4698, lon: 153.0251 },
+    marine: { lat: -27.446, lon: 153.188, label: 'Manly, Moreton Bay' },
+    marineNote: 'Modelled tide, not an official BOM tide table. Moreton Bay is a semi-enclosed bay, so treat this as a rough guide.'
   }
 ];
 
