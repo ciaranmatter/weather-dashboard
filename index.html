@@ -129,6 +129,17 @@
     font-weight: 600;
     font-size: 18px;
   }
+  .location-time {
+    font-size: 12px;
+    color: var(--ink-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .mini-map {
+    height: 100px;
+    border-radius: 6px;
+    overflow: hidden;
+    pointer-events: none;
+  }
   .location-snapshot {
     display: flex;
     gap: 16px;
@@ -157,6 +168,23 @@
     padding: 4px 10px;
     white-space: nowrap;
   }
+  .alert-strip {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 14px;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    border: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+  }
+  .alert-strip:hover { text-decoration: underline; }
+  .location-card.highlight-flash { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* Detail view */
   .conditions-row {
@@ -296,10 +324,11 @@
         <div class="tagline">Pick a location to see live weather, rainfall, and tide data</div>
       </div>
     </header>
+    <button class="alert-strip" id="alert-summary-strip" hidden></button>
     <h2 class="section-label">Locations</h2>
     <div class="locations-grid" id="locations-grid"></div>
     <footer>
-      Weather and rainfall data from Open-Meteo (BOM ACCESS-G model). Sea level data from Open-Meteo Marine API.
+      Weather and rainfall data from Open-Meteo (BOM ACCESS-G model). Sea level data from Open-Meteo Marine API. Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
     </footer>
   </div>
 
@@ -374,6 +403,7 @@ const LOCATIONS = [
   {
     id: 'melbourne',
     name: 'Melbourne',
+    timezone: 'Australia/Melbourne',
     weather: { lat: -37.8136, lon: 144.9631 },
     marine: { lat: -37.867, lon: 144.978, label: 'St Kilda' },
     marineNote: 'Modelled tide, not an official BOM tide table. Port Phillip Bay is a constrained coastline, so treat this as a rough guide.',
@@ -391,6 +421,7 @@ const LOCATIONS = [
   {
     id: 'sydney',
     name: 'Sydney',
+    timezone: 'Australia/Sydney',
     weather: { lat: -33.8688, lon: 151.2093 },
     marine: { lat: -33.891, lon: 151.277, label: 'Bondi Beach' },
     marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.',
@@ -407,6 +438,7 @@ const LOCATIONS = [
   {
     id: 'adelaide',
     name: 'Adelaide',
+    timezone: 'Australia/Adelaide',
     weather: { lat: -34.9285, lon: 138.6007 },
     marine: { lat: -34.7817, lon: 138.4875, label: 'Outer Harbor' },
     marineNote: 'Modelled tide, not an official BOM tide table. Gulf St Vincent is a constrained coastline, so treat this as a rough guide.',
@@ -423,6 +455,7 @@ const LOCATIONS = [
   {
     id: 'perth',
     name: 'Perth',
+    timezone: 'Australia/Perth',
     weather: { lat: -31.9523, lon: 115.8613 },
     marine: { lat: -31.9959, lon: 115.7581, label: 'Cottesloe Beach' },
     marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.'
@@ -430,6 +463,7 @@ const LOCATIONS = [
   {
     id: 'brisbane',
     name: 'Brisbane',
+    timezone: 'Australia/Brisbane',
     weather: { lat: -27.4698, lon: 153.0251 },
     marine: { lat: -27.446, lon: 153.188, label: 'Manly, Moreton Bay' },
     marineNote: 'Modelled tide, not an official BOM tide table. Moreton Bay is a semi-enclosed bay, so treat this as a rough guide.'
@@ -499,6 +533,49 @@ function renderAlertBadges(container, alerts) {
   ).join('');
 }
 
+const alertCounts = {};
+
+function updateAlertState(loc, alerts) {
+  renderAlertBadges(document.getElementById('alerts-' + loc.id), alerts);
+  alertCounts[loc.id] = alerts.length;
+
+  const card = document.querySelector(`.location-card[data-id="${loc.id}"]`);
+  if (card) {
+    const baseIndex = LOCATIONS.findIndex(l => l.id === loc.id);
+    card.style.order = alerts.length > 0 ? -alerts.length : baseIndex;
+  }
+
+  updateAlertSummaryStrip();
+}
+
+function updateAlertSummaryStrip() {
+  const strip = document.getElementById('alert-summary-strip');
+  const activeIds = Object.keys(alertCounts).filter(id => alertCounts[id] > 0);
+  if (activeIds.length === 0) {
+    strip.hidden = true;
+    return;
+  }
+  strip.hidden = false;
+  strip.textContent = activeIds.length === 1
+    ? '1 city has active alerts right now.'
+    : `${activeIds.length} cities have active alerts right now.`;
+  strip.dataset.cityIds = activeIds.join(',');
+}
+
+document.getElementById('alert-summary-strip').addEventListener('click', () => {
+  const ids = (document.getElementById('alert-summary-strip').dataset.cityIds || '').split(',').filter(Boolean);
+  if (!ids.length) return;
+  const firstCard = document.querySelector(`.location-card[data-id="${ids[0]}"]`);
+  if (firstCard) firstCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  ids.forEach(id => {
+    const card = document.querySelector(`.location-card[data-id="${id}"]`);
+    if (card) {
+      card.classList.add('highlight-flash');
+      setTimeout(() => card.classList.remove('highlight-flash'), 1500);
+    }
+  });
+});
+
 function fmtHour(iso) {
   const d = new Date(iso);
   return d.toLocaleTimeString(undefined, { hour: 'numeric' });
@@ -522,9 +599,11 @@ async function fetchMarine(coords) {
 
 function renderLocationCards() {
   const grid = document.getElementById('locations-grid');
-  grid.innerHTML = LOCATIONS.map(loc => `
-    <button class="location-card" data-id="${loc.id}" aria-label="View live conditions for ${loc.name}">
+  grid.innerHTML = LOCATIONS.map((loc, index) => `
+    <button class="location-card" data-id="${loc.id}" aria-label="View live conditions for ${loc.name}" style="order:${index};">
       <div class="location-name">${loc.name}</div>
+      <div class="location-time" id="time-${loc.id}"></div>
+      ${loc.map && loc.map.enabled ? `<div class="mini-map" id="mini-map-${loc.id}"></div>` : ''}
       <div class="location-snapshot" id="snapshot-${loc.id}"><span class="loading">Loading…</span></div>
       <div class="alert-badges" id="alerts-${loc.id}"></div>
       <div class="location-cta">View live data &rarr;</div>
@@ -535,12 +614,34 @@ function renderLocationCards() {
     card.addEventListener('click', () => openLocation(card.dataset.id));
   });
 
+  LOCATIONS.forEach(loc => {
+    updateLocalTime(loc);
+    if (loc.map && loc.map.enabled) initMiniMap(loc);
+  });
+  if (!localTimeInterval) {
+    localTimeInterval = setInterval(() => LOCATIONS.forEach(updateLocalTime), 30000);
+  }
+
   LOCATIONS.forEach(loadSnapshot);
+}
+
+let localTimeInterval = null;
+
+function formatLocalTime(timezone) {
+  try {
+    return new Date().toLocaleTimeString('en-US', { timeZone: timezone, hour: 'numeric', minute: '2-digit' }) + ' local';
+  } catch (err) {
+    return '';
+  }
+}
+
+function updateLocalTime(loc) {
+  const el = document.getElementById('time-' + loc.id);
+  if (el) el.textContent = formatLocalTime(loc.timezone);
 }
 
 async function loadSnapshot(loc) {
   const el = document.getElementById('snapshot-' + loc.id);
-  const badgesEl = document.getElementById('alerts-' + loc.id);
   try {
     const needsMarine = loc.alerts && loc.alerts.enabled;
     const [weather, marine] = await Promise.all([
@@ -552,7 +653,7 @@ async function loadSnapshot(loc) {
       <span>${c.temperature_2m !== undefined ? c.temperature_2m.toFixed(1) : '—'}<span class="snapshot-unit">°C</span></span>
       <span>${c.precipitation !== undefined ? c.precipitation.toFixed(1) : '—'}<span class="snapshot-unit">mm rain</span></span>
     `;
-    renderAlertBadges(badgesEl, computeAlerts(loc, weather, marine));
+    updateAlertState(loc, computeAlerts(loc, weather, marine));
   } catch (err) {
     el.innerHTML = '<span class="loading">Unavailable right now</span>';
   }
@@ -638,7 +739,7 @@ function refreshAlertBadges() {
   if (!currentLocation) return;
   const alerts = computeAlerts(currentLocation, lastWeather, lastMarine);
   renderAlertBadges(document.getElementById('detail-alert-badges'), alerts);
-  renderAlertBadges(document.getElementById('alerts-' + currentLocation.id), alerts);
+  updateAlertState(currentLocation, alerts);
 }
 
 function backToFront() {
@@ -757,6 +858,52 @@ const PIN_ICONS = {
     popupAnchor: [0, -15]
   })
 };
+
+const PIN_ICONS_SMALL = {
+  rainfall: L.divIcon({
+    className: 'pin-icon',
+    html: '<svg viewBox="0 0 24 32" width="14" height="19"><path d="M12 1 C12 1 2 15 2 22 a10 10 0 0 0 20 0 C22 15 12 1 12 1 Z" style="fill:var(--rain)" stroke="#fff" stroke-width="2"/></svg>',
+    iconSize: [14, 19],
+    iconAnchor: [7, 18]
+  }),
+  tide: L.divIcon({
+    className: 'pin-icon',
+    html: '<svg viewBox="0 0 30 30" width="16" height="16"><circle cx="15" cy="15" r="13" style="fill:var(--tide)" stroke="#fff" stroke-width="2"/><path d="M4 16c2.2-3 4.4-3 6.6 0s4.4 3 6.6 0 4.4-3 6.6 0" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/></svg>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  })
+};
+
+// Fine for a handful of cities loading tiles up front; if the location list grows to a dozen+,
+// switch to lazy-initializing these previews as their cards scroll into view.
+function initMiniMap(loc) {
+  const el = document.getElementById('mini-map-' + loc.id);
+  if (!el) return;
+
+  const miniMap = L.map(el, {
+    zoomControl: false,
+    attributionControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    touchZoom: false,
+    keyboard: false,
+    tap: false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(miniMap);
+
+  const sites = (loc.map && loc.map.sites) || [];
+  const markers = sites.map(site =>
+    L.marker([site.lat, site.lon], { icon: PIN_ICONS_SMALL[site.type], interactive: false }).addTo(miniMap)
+  );
+
+  if (markers.length) {
+    miniMap.fitBounds(L.latLngBounds(markers.map(m => m.getLatLng())), { padding: [12, 12] });
+  } else {
+    miniMap.setView([loc.weather.lat, loc.weather.lon], 10);
+  }
+}
 
 function siteSkeletonHtml(site) {
   return `<div class="popup-card"><div class="popup-site-name">${site.label}</div><div class="loading">Loading…</div></div>`;

@@ -31,6 +31,12 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 - A "View full trends →" button switches to the original conditions-cards + full 48h charts view (still based on each city's primary CBD/tide-site reading) and back, so that view isn't lost, just secondary.
 - No pin exists yet for river level — there's no live source for it, and an empty map is more honest than a pin showing fake data.
 - Enabling the map for another location is one config entry: `map: { enabled: true, sites: [...] }` on that location's object, where each site is `{ type: 'rainfall' | 'tide', label, lat, lon }`.
+- Front-page cards for these cities also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive map. Fine for a handful of cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
+
+## Front page: local time, sorting, and alert summary
+- Each city panel shows its current local time (e.g. "2:34 PM local"), computed from its IANA timezone (e.g. `Australia/Adelaide`) so daylight saving is handled automatically without any manual offset math. Updates every 30s.
+- Panels for cities with active alerts float to the front of the grid (most active alerts first), everything else keeps its normal order behind them. Since alerts are Melbourne-only for now, in practice this just means Melbourne jumps to the front when it has an active alert — the sort itself is generic and will apply to any city the moment alerts are enabled for it.
+- A one-line strip above the grid ("N cities have active alerts right now.") appears only when at least one alert is active anywhere, and is hidden entirely otherwise. Clicking it scrolls to and briefly highlights the affected panel(s).
 
 ## Design
 - Custom design system (not a template): navy/royal-blue/pink brand palette on a charcoal-and-grey neutral base, Space Grotesk (headings) + Inter (body) + IBM Plex Mono (numeric readings), inspired by field survey / gauge-board aesthetics.
