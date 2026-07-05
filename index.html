@@ -141,6 +141,20 @@
     font-weight: 500;
     margin-top: auto;
   }
+  .alert-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .alert-pill {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 4px 10px;
+    white-space: nowrap;
+  }
 
   /* Detail view */
   .conditions-row {
@@ -200,6 +214,34 @@
     display: none;
   }
   .loading { color: var(--ink-muted); font-size: 13px; }
+  .manual-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .manual-alert-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .manual-alert-row input[type="text"] {
+    flex: 1;
+    min-width: 120px;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .manual-note {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
   footer {
     margin-top: 32px;
     font-size: 12px;
@@ -256,6 +298,24 @@
       <div class="cond-card"><div class="cond-label">Sea level now</div><div class="cond-value loading">—</div></div>
     </div>
 
+    <div class="card" id="alerts-section" hidden style="margin-bottom:24px;">
+      <h2 class="section-label">Alerts</h2>
+      <div class="alert-badges" id="detail-alert-badges"></div>
+      <div class="manual-alerts">
+        <label class="manual-alert-row">
+          <input type="checkbox" id="toggle-river"> High river
+        </label>
+        <label class="manual-alert-row">
+          <input type="checkbox" id="toggle-flooding"> Local flooding
+        </label>
+        <label class="manual-alert-row">
+          <input type="checkbox" id="toggle-other"> Other
+          <input type="text" id="other-note" placeholder="Describe the alert" disabled>
+        </label>
+        <div class="manual-note">High river, local flooding, and other are manually set by a person, not live data — no live source is wired up for these yet. Saved only on this browser/device.</div>
+      </div>
+    </div>
+
     <div class="charts-grid">
       <div class="card">
         <h2 class="section-label">Rainfall — next 48 hours</h2>
@@ -281,7 +341,8 @@ const LOCATIONS = [
     name: 'Melbourne',
     weather: { lat: -37.8136, lon: 144.9631 },
     marine: { lat: -37.867, lon: 144.978, label: 'St Kilda' },
-    marineNote: 'Modelled tide, not an official BOM tide table. Port Phillip Bay is a constrained coastline, so treat this as a rough guide.'
+    marineNote: 'Modelled tide, not an official BOM tide table. Port Phillip Bay is a constrained coastline, so treat this as a rough guide.',
+    alerts: { enabled: true, tideThreshold: 0.5 }
   },
   {
     id: 'sydney',
@@ -308,6 +369,62 @@ const LOCATIONS = [
 
 let rainChart, tideChart;
 let currentLocation = null;
+let lastWeather = null;
+let lastMarine = null;
+
+const STORM_WEATHER_CODES = [95, 96, 99];
+const MANUAL_ALERTS_KEY = 'weatherDashboardManualAlerts';
+
+function getManualAlerts(locId) {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(MANUAL_ALERTS_KEY)) || {}; } catch (err) {}
+  return Object.assign({ river: false, flooding: false, otherEnabled: false, otherText: '' }, all[locId]);
+}
+
+function setManualAlerts(locId, data) {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(MANUAL_ALERTS_KEY)) || {}; } catch (err) {}
+  all[locId] = data;
+  localStorage.setItem(MANUAL_ALERTS_KEY, JSON.stringify(all));
+}
+
+function computeAlerts(loc, weather, marine) {
+  const alerts = [];
+  if (!loc.alerts || !loc.alerts.enabled) return alerts;
+
+  const precip = weather && weather.hourly && weather.hourly.precipitation;
+  if (precip && precip.length) {
+    const next24 = precip.slice(0, 24);
+    const total = next24.reduce((sum, v) => sum + v, 0);
+    if (Math.max(...next24) >= 4 || total >= 25) alerts.push({ label: 'Heavy rain', manual: false });
+  }
+
+  const codes = weather && weather.hourly && weather.hourly.weather_code;
+  if (codes && codes.length) {
+    const next24 = codes.slice(0, 24);
+    if (next24.some(c => STORM_WEATHER_CODES.includes(c))) alerts.push({ label: 'Storm', manual: false });
+  }
+
+  const seaLevels = marine && marine.hourly && marine.hourly.sea_level_height_msl;
+  if (seaLevels && seaLevels.length) {
+    const next48 = seaLevels.slice(0, 48);
+    if (Math.max(...next48) >= loc.alerts.tideThreshold) alerts.push({ label: 'High tide expected', manual: false });
+  }
+
+  const manual = getManualAlerts(loc.id);
+  if (manual.river) alerts.push({ label: 'High river', manual: true });
+  if (manual.flooding) alerts.push({ label: 'Local flooding', manual: true });
+  if (manual.otherEnabled && manual.otherText.trim()) alerts.push({ label: manual.otherText.trim(), manual: true });
+
+  return alerts;
+}
+
+function renderAlertBadges(container, alerts) {
+  if (!container) return;
+  container.innerHTML = alerts.map(a =>
+    `<span class="alert-pill">${a.label}${a.manual ? ' (manually set)' : ''}</span>`
+  ).join('');
+}
 
 function fmtHour(iso) {
   const d = new Date(iso);
@@ -315,7 +432,7 @@ function fmtHour(iso) {
 }
 
 async function fetchWeather(loc) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.weather.lat}&longitude=${loc.weather.lon}&current=temperature_2m,precipitation,wind_speed_10m&hourly=precipitation&forecast_days=2&timezone=auto`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.weather.lat}&longitude=${loc.weather.lon}&current=temperature_2m,precipitation,wind_speed_10m&hourly=precipitation,weather_code&forecast_days=2&timezone=auto`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather request failed (' + res.status + ')');
   return res.json();
@@ -336,6 +453,7 @@ function renderLocationCards() {
     <button class="location-card" data-id="${loc.id}" aria-label="View live conditions for ${loc.name}">
       <div class="location-name">${loc.name}</div>
       <div class="location-snapshot" id="snapshot-${loc.id}"><span class="loading">Loading…</span></div>
+      <div class="alert-badges" id="alerts-${loc.id}"></div>
       <div class="location-cta">View live data &rarr;</div>
     </button>
   `).join('');
@@ -349,13 +467,19 @@ function renderLocationCards() {
 
 async function loadSnapshot(loc) {
   const el = document.getElementById('snapshot-' + loc.id);
+  const badgesEl = document.getElementById('alerts-' + loc.id);
   try {
-    const weather = await fetchWeather(loc);
+    const needsMarine = loc.alerts && loc.alerts.enabled;
+    const [weather, marine] = await Promise.all([
+      fetchWeather(loc),
+      needsMarine ? fetchMarine(loc) : Promise.resolve(null)
+    ]);
     const c = weather.current || {};
     el.innerHTML = `
       <span>${c.temperature_2m !== undefined ? c.temperature_2m.toFixed(1) : '—'}<span class="snapshot-unit">°C</span></span>
       <span>${c.precipitation !== undefined ? c.precipitation.toFixed(1) : '—'}<span class="snapshot-unit">mm rain</span></span>
     `;
+    renderAlertBadges(badgesEl, computeAlerts(loc, weather, marine));
   } catch (err) {
     el.innerHTML = '<span class="loading">Unavailable right now</span>';
   }
@@ -370,7 +494,48 @@ function openLocation(id) {
   document.getElementById('detail-title').textContent = currentLocation.name;
   document.getElementById('detail-subtitle').textContent = 'Live weather and tide, fetched directly from a public API';
   document.getElementById('marine-caution').textContent = currentLocation.marineNote;
+
+  const alertsEnabled = !!(currentLocation.alerts && currentLocation.alerts.enabled);
+  document.getElementById('alerts-section').hidden = !alertsEnabled;
+  if (alertsEnabled) initManualAlertControls();
+
   loadDetail();
+}
+
+function initManualAlertControls() {
+  const manual = getManualAlerts(currentLocation.id);
+  const riverEl = document.getElementById('toggle-river');
+  const floodingEl = document.getElementById('toggle-flooding');
+  const otherEl = document.getElementById('toggle-other');
+  const otherNoteEl = document.getElementById('other-note');
+
+  riverEl.checked = manual.river;
+  floodingEl.checked = manual.flooding;
+  otherEl.checked = manual.otherEnabled;
+  otherNoteEl.value = manual.otherText;
+  otherNoteEl.disabled = !manual.otherEnabled;
+
+  function save() {
+    setManualAlerts(currentLocation.id, {
+      river: riverEl.checked,
+      flooding: floodingEl.checked,
+      otherEnabled: otherEl.checked,
+      otherText: otherNoteEl.value
+    });
+    refreshAlertBadges();
+  }
+
+  riverEl.onchange = save;
+  floodingEl.onchange = save;
+  otherEl.onchange = () => { otherNoteEl.disabled = !otherEl.checked; save(); };
+  otherNoteEl.oninput = save;
+}
+
+function refreshAlertBadges() {
+  if (!currentLocation) return;
+  const alerts = computeAlerts(currentLocation, lastWeather, lastMarine);
+  renderAlertBadges(document.getElementById('detail-alert-badges'), alerts);
+  renderAlertBadges(document.getElementById('alerts-' + currentLocation.id), alerts);
 }
 
 function backToFront() {
@@ -464,9 +629,12 @@ async function loadDetail() {
   setLoadingState();
   try {
     const [weather, marine] = await Promise.all([fetchWeather(currentLocation), fetchMarine(currentLocation)]);
+    lastWeather = weather;
+    lastMarine = marine;
     renderConditions(weather, marine);
     renderRainChart(weather);
     renderTideChart(marine);
+    refreshAlertBadges();
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch (err) {
     showError('Could not load live data: ' + err.message + '. Click Refresh to try again.');
