@@ -25,13 +25,12 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 - Enabling alerts for another location is one config entry: `alerts: { enabled: true, tideThreshold: <meters> }` on that location's object.
 
 ## Map view (all 5 cities)
-- Opening one of these cities defaults to a map (Leaflet + OpenStreetMap, no API key) with 4 pins — 2 rainfall sites and 2 tide sites per city — rather than one aggregated view for the whole city.
-- Rainfall pins are droplet-shaped in the app's blue; tide pins are wave-shaped in the app's pink, so the two types are tellable apart by shape as well as color.
-- Clicking a pin fetches and shows that specific site's current reading plus its own short-term chart, live for that site's exact coordinates (not just the city's primary reading).
-- A "View full trends →" button switches to the original conditions-cards + full 48h charts view (still based on each city's primary CBD/tide-site reading) and back, so that view isn't lost, just secondary.
+- Opening a city shows a two-column detail view: the interactive map (Leaflet + OpenStreetMap, no API key) on the left, fixed in place, and a scrollable data panel on the right — current conditions, a "Sites" list, and the full 48h charts. The map never moves as you scroll the right-hand panel. On narrow/mobile screens this stacks vertically instead (map on top, unfixed, details below in normal page flow).
+- Each city has 4 pins — 2 rainfall sites and 2 tide sites — rather than one aggregated view for the whole city. Rainfall pins are droplet-shaped in the app's blue; tide pins are wave-shaped in the app's pink, so the two types are tellable apart by shape as well as color.
+- The "Sites" list in the data panel mirrors the pins, showing each site's current key reading (rain amount or sea level) fetched eagerly on load. Clicking a site in the list pans the map to and opens that pin's popup (with its full reading plus a short-term chart); clicking a pin on the map highlights the matching list entry — either direction works.
 - No pin exists yet for river level — there's no live source for it, and an empty map is more honest than a pin showing fake data.
 - Enabling the map for another location is one config entry: `map: { enabled: true, sites: [...] }` on that location's object, where each site is `{ type: 'rainfall' | 'tide', label, lat, lon }`.
-- Front-page cards also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive map. Fine for 5 cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
+- Front-page cards also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive detail view. Fine for 5 cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
 
 ## Front page: local time, sorting, and alert summary
 - Each city panel shows its current local time (e.g. "2:34 PM local"), computed from its IANA timezone (e.g. `Australia/Adelaide`) so daylight saving is handled automatically without any manual offset math. Updates every 30s.

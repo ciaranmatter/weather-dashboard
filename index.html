@@ -228,13 +228,55 @@
     padding: 20px;
   }
   .chart-wrap { position: relative; height: 220px; }
+  .detail-split {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    height: calc(100vh - 280px);
+    min-height: 460px;
+    margin-bottom: 24px;
+  }
+  .detail-map-col { flex: 2; height: 100%; min-width: 0; }
+  .detail-data-col {
+    flex: 1;
+    height: 100%;
+    min-width: 0;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  @media (max-width: 900px) {
+    .detail-split { flex-direction: column; height: auto; min-height: 0; }
+    .detail-map-col { width: 100%; height: 380px; flex: none; }
+    .detail-data-col { width: 100%; height: auto; overflow-y: visible; flex: none; }
+  }
   #map {
-    height: 380px;
+    height: 100%;
     border-radius: var(--radius);
     overflow: hidden;
-    margin-bottom: 24px;
     border: 1px solid var(--line);
   }
+  .sites-list { display: flex; flex-direction: column; gap: 2px; }
+  .site-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .site-list-item:hover, .site-list-item.active { background: var(--accent-soft); }
+  .site-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .site-dot.rainfall { background: var(--rain); }
+  .site-dot.tide { background: var(--tide); }
+  .site-list-label { flex: 1; }
+  .site-list-value { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 12px; }
   .leaflet-popup-content-wrapper {
     background: var(--surface);
     color: var(--ink);
@@ -342,7 +384,6 @@
       </div>
       <div class="status-row">
         <span class="badge" id="last-updated">Loading…</span>
-        <button class="back" id="view-toggle-btn" hidden></button>
         <button class="refresh" id="refresh-btn">Refresh</button>
       </div>
     </header>
@@ -367,20 +408,25 @@
       </div>
     </div>
 
-    <div id="detail-map-section" hidden>
-      <div id="map"></div>
-    </div>
-
-    <div id="detail-trends-section">
-      <div class="conditions-row" id="conditions-row">
-        <div class="cond-card"><div class="cond-label">Temperature</div><div class="cond-value loading">—</div></div>
-        <div class="cond-card"><div class="cond-label">Rain right now</div><div class="cond-value loading">—</div></div>
-        <div class="cond-card"><div class="cond-label">Wind speed</div><div class="cond-value loading">—</div></div>
-        <div class="cond-card"><div class="cond-label">Sea level now</div><div class="cond-value loading">—</div></div>
+    <div class="detail-split">
+      <div class="detail-map-col" id="detail-map-col" hidden>
+        <div id="map"></div>
       </div>
 
-      <div class="charts-grid">
-        <div class="card">
+      <div class="detail-data-col" id="detail-data-col">
+        <div class="conditions-row" id="conditions-row">
+          <div class="cond-card"><div class="cond-label">Temperature</div><div class="cond-value loading">—</div></div>
+          <div class="cond-card"><div class="cond-label">Rain right now</div><div class="cond-value loading">—</div></div>
+          <div class="cond-card"><div class="cond-label">Wind speed</div><div class="cond-value loading">—</div></div>
+          <div class="cond-card"><div class="cond-label">Sea level now</div><div class="cond-value loading">—</div></div>
+        </div>
+
+        <div class="card" id="sites-list-card" hidden style="margin-bottom:20px;">
+          <h2 class="section-label">Sites</h2>
+          <div class="sites-list" id="sites-list"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
           <h2 class="section-label">Rainfall — next 48 hours</h2>
           <div class="chart-wrap"><canvas id="rain-chart"></canvas></div>
         </div>
@@ -692,37 +738,15 @@ function openLocation(id) {
   if (alertsEnabled) initManualAlertControls();
 
   const mapEnabled = !!(currentLocation.map && currentLocation.map.enabled);
-  document.getElementById('view-toggle-btn').hidden = !mapEnabled;
+  document.getElementById('detail-map-col').hidden = !mapEnabled;
+  document.getElementById('sites-list-card').hidden = !mapEnabled;
   if (mapEnabled) {
-    showMapView();
     initMap(currentLocation);
-  } else {
-    showTrendsView();
+    loadSitesList(currentLocation);
   }
 
   loadDetail();
 }
-
-let mapViewActive = false;
-
-function showMapView() {
-  document.getElementById('detail-map-section').hidden = false;
-  document.getElementById('detail-trends-section').hidden = true;
-  document.getElementById('view-toggle-btn').textContent = 'View full trends →';
-  mapViewActive = true;
-  if (leafletMap) requestAnimationFrame(() => leafletMap.invalidateSize());
-}
-
-function showTrendsView() {
-  document.getElementById('detail-map-section').hidden = true;
-  document.getElementById('detail-trends-section').hidden = false;
-  document.getElementById('view-toggle-btn').textContent = '← Back to map';
-  mapViewActive = false;
-}
-
-document.getElementById('view-toggle-btn').addEventListener('click', () => {
-  if (mapViewActive) showTrendsView(); else showMapView();
-});
 
 function initManualAlertControls() {
   const manual = getManualAlerts(currentLocation.id);
@@ -859,6 +883,7 @@ function renderTideChart(marine) {
 
 let leafletMap = null;
 let activeSiteChart = null;
+let siteMarkers = [];
 
 const PIN_ICONS = {
   rainfall: L.divIcon({
@@ -988,6 +1013,7 @@ async function loadSitePopup(site, marker, loc) {
 
 function initMap(loc) {
   if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+  siteMarkers = [];
 
   leafletMap = L.map('map');
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -996,19 +1022,83 @@ function initMap(loc) {
   }).addTo(leafletMap);
 
   const sites = (loc.map && loc.map.sites) || [];
-  const markers = sites.map(site => {
+  sites.forEach((site, index) => {
     const marker = L.marker([site.lat, site.lon], { icon: PIN_ICONS[site.type] }).addTo(leafletMap);
     const popup = L.popup({ className: 'app-popup' }).setContent(siteSkeletonHtml(site));
     marker.bindPopup(popup);
-    marker.on('popupopen', () => loadSitePopup(site, marker, loc));
-    marker.on('popupclose', () => { if (activeSiteChart) { activeSiteChart.destroy(); activeSiteChart = null; } });
-    return marker;
+    marker.on('popupopen', () => {
+      highlightSiteListItem(index);
+      loadSitePopup(site, marker, loc);
+    });
+    marker.on('popupclose', () => {
+      if (activeSiteChart) { activeSiteChart.destroy(); activeSiteChart = null; }
+      clearSiteListHighlight();
+    });
+    siteMarkers.push(marker);
   });
 
-  if (markers.length) {
-    const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+  if (siteMarkers.length) {
+    const bounds = L.latLngBounds(siteMarkers.map(m => m.getLatLng()));
     leafletMap.fitBounds(bounds, { padding: [40, 40] });
   }
+}
+
+function siteListItemHtml(site, index) {
+  return `
+    <button class="site-list-item" type="button" data-site-index="${index}">
+      <span class="site-dot ${site.type}"></span>
+      <span class="site-list-label">${site.label}</span>
+      <span class="site-list-value loading" id="site-value-${index}">—</span>
+    </button>
+  `;
+}
+
+async function loadSitesList(loc) {
+  const container = document.getElementById('sites-list');
+  const sites = (loc.map && loc.map.sites) || [];
+  container.innerHTML = sites.map((site, index) => siteListItemHtml(site, index)).join('');
+
+  container.querySelectorAll('.site-list-item').forEach(btn => {
+    btn.addEventListener('click', () => focusSite(Number(btn.dataset.siteIndex)));
+  });
+
+  sites.forEach(async (site, index) => {
+    const valueEl = document.getElementById('site-value-' + index);
+    try {
+      if (site.type === 'rainfall') {
+        const weather = await fetchWeather(site);
+        const c = weather.current || {};
+        valueEl.textContent = c.precipitation !== undefined ? c.precipitation.toFixed(1) + ' mm' : '—';
+      } else {
+        const marine = await fetchMarine(site);
+        const levels = marine.hourly && marine.hourly.sea_level_height_msl;
+        valueEl.textContent = levels && levels.length ? levels[0].toFixed(2) + ' m' : '—';
+      }
+    } catch (err) {
+      valueEl.textContent = 'n/a';
+    }
+    valueEl.classList.remove('loading');
+  });
+}
+
+function focusSite(index) {
+  const marker = siteMarkers[index];
+  if (!marker || !leafletMap) return;
+  leafletMap.panTo(marker.getLatLng());
+  marker.openPopup();
+}
+
+function highlightSiteListItem(index) {
+  clearSiteListHighlight();
+  const el = document.querySelector(`.site-list-item[data-site-index="${index}"]`);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+function clearSiteListHighlight() {
+  document.querySelectorAll('.site-list-item.active').forEach(el => el.classList.remove('active'));
 }
 
 async function loadDetail() {
