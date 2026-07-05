@@ -458,7 +458,16 @@ const LOCATIONS = [
     timezone: 'Australia/Perth',
     weather: { lat: -31.9523, lon: 115.8613 },
     marine: { lat: -31.9959, lon: 115.7581, label: 'Cottesloe Beach' },
-    marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.'
+    marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.',
+    map: {
+      enabled: true,
+      sites: [
+        { type: 'rainfall', label: 'Perth CBD', lat: -31.9523, lon: 115.8613 },
+        { type: 'rainfall', label: 'Perth Airport', lat: -31.9385, lon: 115.9672 },
+        { type: 'tide', label: 'Cottesloe Beach', lat: -31.9959, lon: 115.7581 },
+        { type: 'tide', label: 'Fremantle', lat: -32.0569, lon: 115.7439 }
+      ]
+    }
   },
   {
     id: 'brisbane',
@@ -466,7 +475,16 @@ const LOCATIONS = [
     timezone: 'Australia/Brisbane',
     weather: { lat: -27.4698, lon: 153.0251 },
     marine: { lat: -27.446, lon: 153.188, label: 'Manly, Moreton Bay' },
-    marineNote: 'Modelled tide, not an official BOM tide table. Moreton Bay is a semi-enclosed bay, so treat this as a rough guide.'
+    marineNote: 'Modelled tide, not an official BOM tide table. Moreton Bay is a semi-enclosed bay, so treat this as a rough guide.',
+    map: {
+      enabled: true,
+      sites: [
+        { type: 'rainfall', label: 'Brisbane CBD', lat: -27.4698, lon: 153.0251 },
+        { type: 'rainfall', label: 'Brisbane Airport', lat: -27.3942, lon: 153.1218 },
+        { type: 'tide', label: 'Manly, Moreton Bay', lat: -27.446, lon: 153.188 },
+        { type: 'tide', label: 'Wynnum', lat: -27.4423, lon: 153.1730 }
+      ]
+    }
   }
 ];
 

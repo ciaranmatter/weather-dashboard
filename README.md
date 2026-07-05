@@ -24,14 +24,14 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 - **High river**, **local flooding**, and a free-text **other** alert are manual toggles (no live source wired up yet) — set by a person, saved to `localStorage`, clearly labelled "(manually set)" wherever they show up so it's honest about what's live data vs. judgement call. Only persists on one browser/device until there's a real backend.
 - Enabling alerts for another location is one config entry: `alerts: { enabled: true, tideThreshold: <meters> }` on that location's object.
 
-## Map view (Melbourne, Sydney, Adelaide so far)
+## Map view (all 5 cities)
 - Opening one of these cities defaults to a map (Leaflet + OpenStreetMap, no API key) with 4 pins — 2 rainfall sites and 2 tide sites per city — rather than one aggregated view for the whole city.
 - Rainfall pins are droplet-shaped in the app's blue; tide pins are wave-shaped in the app's pink, so the two types are tellable apart by shape as well as color.
 - Clicking a pin fetches and shows that specific site's current reading plus its own short-term chart, live for that site's exact coordinates (not just the city's primary reading).
 - A "View full trends →" button switches to the original conditions-cards + full 48h charts view (still based on each city's primary CBD/tide-site reading) and back, so that view isn't lost, just secondary.
 - No pin exists yet for river level — there's no live source for it, and an empty map is more honest than a pin showing fake data.
 - Enabling the map for another location is one config entry: `map: { enabled: true, sites: [...] }` on that location's object, where each site is `{ type: 'rainfall' | 'tide', label, lat, lon }`.
-- Front-page cards for these cities also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive map. Fine for a handful of cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
+- Front-page cards also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive map. Fine for 5 cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
 
 ## Front page: local time, sorting, and alert summary
 - Each city panel shows its current local time (e.g. "2:34 PM local"), computed from its IANA timezone (e.g. `Australia/Adelaide`) so daylight saving is handled automatically without any manual offset math. Updates every 30s.
@@ -66,7 +66,7 @@ This dashboard is the deliberately small first step: prove out a live-data dashb
 ## Immediate next steps
 - Watch the heavy-rain/storm/tide alert thresholds against real conditions for a bit and tune them if they're too sensitive or not sensitive enough.
 - Decide if/when manual alert toggles need real access control, before they're ever backed by something shared.
-- Extend alerts to Sydney and Adelaide, and the map view to Perth and Brisbane, once the current versions have been used for a while.
+- Extend alerts to Sydney, Adelaide, Perth, and Brisbane once the Melbourne version has been used for a while — the map view is already live for all 5.
 - Revisit the Supabase-based architecture once ready to add private sensor data, history, river-level data, or Claude-generated analysis.
 
 ## Constraints to keep in mind
