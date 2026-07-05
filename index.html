@@ -7,7 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js" integrity="sha512-Y51n9mtKTVBh3Jbx5pZSJNDDMyY+yGe77DGtBPzRlgsf/YLCh13kSZ3JmfHGzYFCmOndraf0sQgfM654b7dJ3w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   :root {
     --bg: #EEF0F1;
@@ -198,6 +200,25 @@
     padding: 20px;
   }
   .chart-wrap { position: relative; height: 220px; }
+  #map {
+    height: 380px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+    border: 1px solid var(--line);
+  }
+  .leaflet-popup-content-wrapper {
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: var(--radius);
+  }
+  .leaflet-popup-tip { background: var(--surface); }
+  .popup-card { font-family: 'Inter', sans-serif; min-width: 200px; }
+  .popup-card .cond-label { margin-top: 8px; }
+  .popup-card .cond-label:first-child { margin-top: 0; }
+  .popup-card .cond-value { font-size: 18px; }
+  .popup-card .chart-wrap { height: 120px; margin-top: 8px; }
+  .popup-card .caution { margin-top: 8px; }
   .caution {
     font-size: 12px;
     color: var(--ink-muted);
@@ -285,18 +306,12 @@
       </div>
       <div class="status-row">
         <span class="badge" id="last-updated">Loading…</span>
+        <button class="back" id="view-toggle-btn" hidden></button>
         <button class="refresh" id="refresh-btn">Refresh</button>
       </div>
     </header>
 
     <div class="error-box" id="error-box"></div>
-
-    <div class="conditions-row" id="conditions-row">
-      <div class="cond-card"><div class="cond-label">Temperature</div><div class="cond-value loading">—</div></div>
-      <div class="cond-card"><div class="cond-label">Rain right now</div><div class="cond-value loading">—</div></div>
-      <div class="cond-card"><div class="cond-label">Wind speed</div><div class="cond-value loading">—</div></div>
-      <div class="cond-card"><div class="cond-label">Sea level now</div><div class="cond-value loading">—</div></div>
-    </div>
 
     <div class="card" id="alerts-section" hidden style="margin-bottom:24px;">
       <h2 class="section-label">Alerts</h2>
@@ -316,15 +331,28 @@
       </div>
     </div>
 
-    <div class="charts-grid">
-      <div class="card">
-        <h2 class="section-label">Rainfall — next 48 hours</h2>
-        <div class="chart-wrap"><canvas id="rain-chart"></canvas></div>
+    <div id="detail-map-section" hidden>
+      <div id="map"></div>
+    </div>
+
+    <div id="detail-trends-section">
+      <div class="conditions-row" id="conditions-row">
+        <div class="cond-card"><div class="cond-label">Temperature</div><div class="cond-value loading">—</div></div>
+        <div class="cond-card"><div class="cond-label">Rain right now</div><div class="cond-value loading">—</div></div>
+        <div class="cond-card"><div class="cond-label">Wind speed</div><div class="cond-value loading">—</div></div>
+        <div class="cond-card"><div class="cond-label">Sea level now</div><div class="cond-value loading">—</div></div>
       </div>
-      <div class="card">
-        <h2 class="section-label">Sea level — next 48 hours</h2>
-        <div class="chart-wrap"><canvas id="tide-chart"></canvas></div>
-        <div class="caution" id="marine-caution"></div>
+
+      <div class="charts-grid">
+        <div class="card">
+          <h2 class="section-label">Rainfall — next 48 hours</h2>
+          <div class="chart-wrap"><canvas id="rain-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <h2 class="section-label">Sea level — next 48 hours</h2>
+          <div class="chart-wrap"><canvas id="tide-chart"></canvas></div>
+          <div class="caution" id="marine-caution"></div>
+        </div>
       </div>
     </div>
 
@@ -342,7 +370,8 @@ const LOCATIONS = [
     weather: { lat: -37.8136, lon: 144.9631 },
     marine: { lat: -37.867, lon: 144.978, label: 'St Kilda' },
     marineNote: 'Modelled tide, not an official BOM tide table. Port Phillip Bay is a constrained coastline, so treat this as a rough guide.',
-    alerts: { enabled: true, tideThreshold: 0.5 }
+    alerts: { enabled: true, tideThreshold: 0.5 },
+    map: { enabled: true }
   },
   {
     id: 'sydney',
@@ -419,10 +448,14 @@ function computeAlerts(loc, weather, marine) {
   return alerts;
 }
 
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function renderAlertBadges(container, alerts) {
   if (!container) return;
   container.innerHTML = alerts.map(a =>
-    `<span class="alert-pill">${a.label}${a.manual ? ' (manually set)' : ''}</span>`
+    `<span class="alert-pill">${escapeHtml(a.label)}${a.manual ? ' (manually set)' : ''}</span>`
   ).join('');
 }
 
@@ -499,8 +532,38 @@ function openLocation(id) {
   document.getElementById('alerts-section').hidden = !alertsEnabled;
   if (alertsEnabled) initManualAlertControls();
 
+  const mapEnabled = !!(currentLocation.map && currentLocation.map.enabled);
+  document.getElementById('view-toggle-btn').hidden = !mapEnabled;
+  if (mapEnabled) {
+    showMapView();
+    initMap(currentLocation);
+  } else {
+    showTrendsView();
+  }
+
   loadDetail();
 }
+
+let mapViewActive = false;
+
+function showMapView() {
+  document.getElementById('detail-map-section').hidden = false;
+  document.getElementById('detail-trends-section').hidden = true;
+  document.getElementById('view-toggle-btn').textContent = 'View full trends →';
+  mapViewActive = true;
+  if (leafletMap) requestAnimationFrame(() => leafletMap.invalidateSize());
+}
+
+function showTrendsView() {
+  document.getElementById('detail-map-section').hidden = true;
+  document.getElementById('detail-trends-section').hidden = false;
+  document.getElementById('view-toggle-btn').textContent = '← Back to map';
+  mapViewActive = false;
+}
+
+document.getElementById('view-toggle-btn').addEventListener('click', () => {
+  if (mapViewActive) showTrendsView(); else showMapView();
+});
 
 function initManualAlertControls() {
   const manual = getManualAlerts(currentLocation.id);
@@ -585,13 +648,11 @@ function chartDefaults() {
   };
 }
 
-function renderRainChart(weather) {
+function buildRainChartConfig(weather) {
   const labels = weather.hourly.time.slice(0, 48).map(fmtHour);
   const data = weather.hourly.precipitation.slice(0, 48);
   const d = chartDefaults();
-  const ctx = document.getElementById('rain-chart').getContext('2d');
-  if (rainChart) rainChart.destroy();
-  rainChart = new Chart(ctx, {
+  return {
     type: 'bar',
     data: { labels, datasets: [{ data, backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--rain').trim(), borderRadius: 2, barPercentage: 0.7 }] },
     options: {
@@ -602,16 +663,14 @@ function renderRainChart(weather) {
         y: { ticks: { color: d.inkMuted, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: d.line }, title: { display: true, text: 'mm', color: d.inkMuted, font: { size: 10 } } }
       }
     }
-  });
+  };
 }
 
-function renderTideChart(marine) {
+function buildTideChartConfig(marine) {
   const labels = marine.hourly.time.slice(0, 48).map(fmtHour);
   const data = marine.hourly.sea_level_height_msl.slice(0, 48);
   const d = chartDefaults();
-  const ctx = document.getElementById('tide-chart').getContext('2d');
-  if (tideChart) tideChart.destroy();
-  tideChart = new Chart(ctx, {
+  return {
     type: 'line',
     data: { labels, datasets: [{ data, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--tide').trim(), backgroundColor: 'transparent', tension: 0.35, pointRadius: 0, borderWidth: 2 }] },
     options: {
@@ -622,7 +681,92 @@ function renderTideChart(marine) {
         y: { ticks: { color: d.inkMuted, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: d.line }, title: { display: true, text: 'm', color: d.inkMuted, font: { size: 10 } } }
       }
     }
-  });
+  };
+}
+
+function renderRainChart(weather) {
+  const ctx = document.getElementById('rain-chart').getContext('2d');
+  if (rainChart) rainChart.destroy();
+  rainChart = new Chart(ctx, buildRainChartConfig(weather));
+}
+
+function renderTideChart(marine) {
+  const ctx = document.getElementById('tide-chart').getContext('2d');
+  if (tideChart) tideChart.destroy();
+  tideChart = new Chart(ctx, buildTideChartConfig(marine));
+}
+
+/* ---------- Map view ---------- */
+
+let leafletMap = null;
+let popupWeatherChart = null;
+let popupTideChart = null;
+
+function buildWeatherPopupHtml() {
+  const c = (lastWeather && lastWeather.current) || {};
+  const temp = c.temperature_2m !== undefined ? c.temperature_2m.toFixed(1) + ' °C' : '—';
+  const rain = c.precipitation !== undefined ? c.precipitation.toFixed(1) + ' mm' : '—';
+  const wind = c.wind_speed_10m !== undefined ? c.wind_speed_10m.toFixed(0) + ' km/h' : '—';
+  return `
+    <div class="popup-card">
+      <div class="cond-label">Temperature</div><div class="cond-value">${temp}</div>
+      <div class="cond-label">Rain right now</div><div class="cond-value">${rain}</div>
+      <div class="cond-label">Wind speed</div><div class="cond-value">${wind}</div>
+      <div class="chart-wrap"><canvas id="popup-rain-chart"></canvas></div>
+    </div>
+  `;
+}
+
+function buildTidePopupHtml(loc) {
+  const levels = lastMarine && lastMarine.hourly && lastMarine.hourly.sea_level_height_msl;
+  const now = levels && levels.length ? levels[0].toFixed(2) + ' m' : '—';
+  return `
+    <div class="popup-card">
+      <div class="cond-label">Sea level now (${loc.marine.label})</div><div class="cond-value">${now}</div>
+      <div class="chart-wrap"><canvas id="popup-tide-chart"></canvas></div>
+      <div class="caution">${loc.marineNote}</div>
+    </div>
+  `;
+}
+
+function renderWeatherPopupChart() {
+  const canvas = document.getElementById('popup-rain-chart');
+  if (!canvas || !lastWeather || !lastWeather.hourly) return;
+  if (popupWeatherChart) { popupWeatherChart.destroy(); popupWeatherChart = null; }
+  popupWeatherChart = new Chart(canvas.getContext('2d'), buildRainChartConfig(lastWeather));
+}
+
+function renderTidePopupChart() {
+  const canvas = document.getElementById('popup-tide-chart');
+  if (!canvas || !lastMarine || !lastMarine.hourly) return;
+  if (popupTideChart) { popupTideChart.destroy(); popupTideChart = null; }
+  popupTideChart = new Chart(canvas.getContext('2d'), buildTideChartConfig(lastMarine));
+}
+
+function initMap(loc) {
+  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
+
+  leafletMap = L.map('map');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+  }).addTo(leafletMap);
+
+  const weatherMarker = L.marker([loc.weather.lat, loc.weather.lon]).addTo(leafletMap)
+    .bindPopup(buildWeatherPopupHtml, { className: 'app-popup' });
+  weatherMarker.on('popupopen', renderWeatherPopupChart);
+  weatherMarker.on('popupclose', () => { if (popupWeatherChart) { popupWeatherChart.destroy(); popupWeatherChart = null; } });
+
+  const tideMarker = L.marker([loc.marine.lat, loc.marine.lon]).addTo(leafletMap)
+    .bindPopup(() => buildTidePopupHtml(loc), { className: 'app-popup' });
+  tideMarker.on('popupopen', renderTidePopupChart);
+  tideMarker.on('popupclose', () => { if (popupTideChart) { popupTideChart.destroy(); popupTideChart = null; } });
+
+  const bounds = L.latLngBounds([
+    [loc.weather.lat, loc.weather.lon],
+    [loc.marine.lat, loc.marine.lon]
+  ]);
+  leafletMap.fitBounds(bounds, { padding: [40, 40] });
 }
 
 async function loadDetail() {
