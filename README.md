@@ -1,16 +1,16 @@
 # Live weather & tide dashboard
 
 ## What this is
-A multi-location dashboard showing live weather, rainfall forecast, and modelled sea level, with front-page alert badges and a map view for Melbourne. Currently covers Melbourne, Sydney, Perth, and Brisbane, with a front page to pick a location and a detail view for live conditions. Built as a simple, zero-backend first step, part of a larger idea for Matter to eventually build flood-risk warnings. Company branding is intentionally left off the page itself for now.
+A multi-location dashboard showing live weather, rainfall forecast, and modelled sea level, with front-page alert badges and a multi-site map view. Currently covers Melbourne, Sydney, Adelaide, Perth, and Brisbane, with a front page to pick a location and a detail view for live conditions. Built as a simple, zero-backend first step, part of a larger idea for Matter to eventually build flood-risk warnings. Company branding is intentionally left off the page itself for now.
 
 Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 
 ## How it works
 - One static HTML file (`index.html`), no build step, no server.
-- Front page shows a card per location (Melbourne, Sydney, Perth, Brisbane) with a live snapshot; clicking one opens the full detail view for that city.
+- Front page shows a card per location (Melbourne, Sydney, Adelaide, Perth, Brisbane) with a live snapshot; clicking one opens the full detail view for that city.
 - Fetches directly from the browser, per location:
   - Weather + rainfall forecast: Open-Meteo forecast API (BOM ACCESS-G model), free, no API key.
-  - Sea level: Open-Meteo Marine API, free, no API key. Modelled, not an official BOM tide table — coastlines on an enclosed bay (Melbourne/St Kilda, Brisbane/Moreton Bay) are a rougher estimate; open coastlines (Sydney/Bondi, Perth/Cottesloe) tend to be more reliable.
+  - Sea level: Open-Meteo Marine API, free, no API key. Modelled, not an official BOM tide table — coastlines on an enclosed bay/gulf (Melbourne/Port Phillip Bay, Brisbane/Moreton Bay, Adelaide/Gulf St Vincent) are a rougher estimate; open coastlines (Sydney, Perth) tend to be more reliable.
 - Adding another location = adding one entry to the `LOCATIONS` list in the script (name, weather coordinates, a coastal point for tide data).
 - Charts drawn with Chart.js; the map view uses Leaflet with OpenStreetMap tiles — both loaded from a CDN, both free with no API key or account, both pinned with Subresource Integrity (SRI) hashes so the page only runs the exact script/stylesheet bytes it expects.
 - Hosted on GitHub Pages, deployed automatically by pushing to `main`.
@@ -24,12 +24,13 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 - **High river**, **local flooding**, and a free-text **other** alert are manual toggles (no live source wired up yet) — set by a person, saved to `localStorage`, clearly labelled "(manually set)" wherever they show up so it's honest about what's live data vs. judgement call. Only persists on one browser/device until there's a real backend.
 - Enabling alerts for another location is one config entry: `alerts: { enabled: true, tideThreshold: <meters> }` on that location's object.
 
-## Map view (Melbourne only so far)
-- Opening Melbourne defaults to a map (Leaflet + OpenStreetMap, no API key) with a pin per live data source — one for rainfall (Melbourne CBD), one for tide (St Kilda) — rather than one aggregated view for the whole city.
-- Clicking a pin opens a popup with that source's current reading plus its own short-term chart.
-- A "View full trends →" button switches to the original conditions-cards + full 48h charts view and back, so that view isn't lost, just secondary.
+## Map view (Melbourne, Sydney, Adelaide so far)
+- Opening one of these cities defaults to a map (Leaflet + OpenStreetMap, no API key) with 4 pins — 2 rainfall sites and 2 tide sites per city — rather than one aggregated view for the whole city.
+- Rainfall pins are droplet-shaped in the app's blue; tide pins are wave-shaped in the app's pink, so the two types are tellable apart by shape as well as color.
+- Clicking a pin fetches and shows that specific site's current reading plus its own short-term chart, live for that site's exact coordinates (not just the city's primary reading).
+- A "View full trends →" button switches to the original conditions-cards + full 48h charts view (still based on each city's primary CBD/tide-site reading) and back, so that view isn't lost, just secondary.
 - No pin exists yet for river level — there's no live source for it, and an empty map is more honest than a pin showing fake data.
-- Enabling the map for another location is one config entry: `map: { enabled: true }` on that location's object.
+- Enabling the map for another location is one config entry: `map: { enabled: true, sites: [...] }` on that location's object, where each site is `{ type: 'rainfall' | 'tide', label, lat, lon }`.
 
 ## Design
 - Custom design system (not a template): navy/royal-blue/pink brand palette on a charcoal-and-grey neutral base, Space Grotesk (headings) + Inter (body) + IBM Plex Mono (numeric readings), inspired by field survey / gauge-board aesthetics.
@@ -59,7 +60,7 @@ This dashboard is the deliberately small first step: prove out a live-data dashb
 ## Immediate next steps
 - Watch the heavy-rain/storm/tide alert thresholds against real conditions for a bit and tune them if they're too sensitive or not sensitive enough.
 - Decide if/when manual alert toggles need real access control, before they're ever backed by something shared.
-- Extend alerts and the map view to Sydney, Perth, and Brisbane once the Melbourne version has been used for a while.
+- Extend alerts to Sydney and Adelaide, and the map view to Perth and Brisbane, once the current versions have been used for a while.
 - Revisit the Supabase-based architecture once ready to add private sensor data, history, river-level data, or Claude-generated analysis.
 
 ## Constraints to keep in mind

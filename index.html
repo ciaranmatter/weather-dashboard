@@ -213,7 +213,14 @@
     border-radius: var(--radius);
   }
   .leaflet-popup-tip { background: var(--surface); }
+  .pin-icon { background: none; border: none; }
   .popup-card { font-family: 'Inter', sans-serif; min-width: 200px; }
+  .popup-site-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
   .popup-card .cond-label { margin-top: 8px; }
   .popup-card .cond-label:first-child { margin-top: 0; }
   .popup-card .cond-value { font-size: 18px; }
@@ -371,14 +378,47 @@ const LOCATIONS = [
     marine: { lat: -37.867, lon: 144.978, label: 'St Kilda' },
     marineNote: 'Modelled tide, not an official BOM tide table. Port Phillip Bay is a constrained coastline, so treat this as a rough guide.',
     alerts: { enabled: true, tideThreshold: 0.5 },
-    map: { enabled: true }
+    map: {
+      enabled: true,
+      sites: [
+        { type: 'rainfall', label: 'Melbourne CBD', lat: -37.8136, lon: 144.9631 },
+        { type: 'rainfall', label: 'Melbourne Airport', lat: -37.6690, lon: 144.8410 },
+        { type: 'tide', label: 'St Kilda', lat: -37.8670, lon: 144.9780 },
+        { type: 'tide', label: 'Williamstown', lat: -37.8675, lon: 144.8985 }
+      ]
+    }
   },
   {
     id: 'sydney',
     name: 'Sydney',
     weather: { lat: -33.8688, lon: 151.2093 },
     marine: { lat: -33.891, lon: 151.277, label: 'Bondi Beach' },
-    marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.'
+    marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.',
+    map: {
+      enabled: true,
+      sites: [
+        { type: 'rainfall', label: 'Sydney CBD', lat: -33.8688, lon: 151.2093 },
+        { type: 'rainfall', label: 'Parramatta', lat: -33.8148, lon: 151.0011 },
+        { type: 'tide', label: 'Bondi Beach', lat: -33.8915, lon: 151.2767 },
+        { type: 'tide', label: 'Manly', lat: -33.7969, lon: 151.2878 }
+      ]
+    }
+  },
+  {
+    id: 'adelaide',
+    name: 'Adelaide',
+    weather: { lat: -34.9285, lon: 138.6007 },
+    marine: { lat: -34.7817, lon: 138.4875, label: 'Outer Harbor' },
+    marineNote: 'Modelled tide, not an official BOM tide table. Gulf St Vincent is a constrained coastline, so treat this as a rough guide.',
+    map: {
+      enabled: true,
+      sites: [
+        { type: 'rainfall', label: 'Adelaide CBD', lat: -34.9285, lon: 138.6007 },
+        { type: 'rainfall', label: 'Salisbury', lat: -34.7666, lon: 138.6725 },
+        { type: 'tide', label: 'Outer Harbor', lat: -34.7817, lon: 138.4875 },
+        { type: 'tide', label: 'Glenelg', lat: -34.9805, lon: 138.5175 }
+      ]
+    }
   },
   {
     id: 'perth',
@@ -464,15 +504,15 @@ function fmtHour(iso) {
   return d.toLocaleTimeString(undefined, { hour: 'numeric' });
 }
 
-async function fetchWeather(loc) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.weather.lat}&longitude=${loc.weather.lon}&current=temperature_2m,precipitation,wind_speed_10m&hourly=precipitation,weather_code&forecast_days=2&timezone=auto`;
+async function fetchWeather(coords) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,precipitation,wind_speed_10m&hourly=precipitation,weather_code&forecast_days=2&timezone=auto`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather request failed (' + res.status + ')');
   return res.json();
 }
 
-async function fetchMarine(loc) {
-  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.marine.lat}&longitude=${loc.marine.lon}&hourly=sea_level_height_msl&forecast_days=2&timezone=auto`;
+async function fetchMarine(coords) {
+  const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${coords.lat}&longitude=${coords.lon}&hourly=sea_level_height_msl&forecast_days=2&timezone=auto`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Marine request failed (' + res.status + ')');
   return res.json();
@@ -504,8 +544,8 @@ async function loadSnapshot(loc) {
   try {
     const needsMarine = loc.alerts && loc.alerts.enabled;
     const [weather, marine] = await Promise.all([
-      fetchWeather(loc),
-      needsMarine ? fetchMarine(loc) : Promise.resolve(null)
+      fetchWeather(loc.weather),
+      needsMarine ? fetchMarine(loc.marine) : Promise.resolve(null)
     ]);
     const c = weather.current || {};
     el.innerHTML = `
@@ -699,48 +739,86 @@ function renderTideChart(marine) {
 /* ---------- Map view ---------- */
 
 let leafletMap = null;
-let popupWeatherChart = null;
-let popupTideChart = null;
+let activeSiteChart = null;
 
-function buildWeatherPopupHtml() {
-  const c = (lastWeather && lastWeather.current) || {};
-  const temp = c.temperature_2m !== undefined ? c.temperature_2m.toFixed(1) + ' °C' : '—';
-  const rain = c.precipitation !== undefined ? c.precipitation.toFixed(1) + ' mm' : '—';
-  const wind = c.wind_speed_10m !== undefined ? c.wind_speed_10m.toFixed(0) + ' km/h' : '—';
+const PIN_ICONS = {
+  rainfall: L.divIcon({
+    className: 'pin-icon',
+    html: '<svg viewBox="0 0 24 32" width="24" height="32"><path d="M12 1 C12 1 2 15 2 22 a10 10 0 0 0 20 0 C22 15 12 1 12 1 Z" style="fill:var(--rain)" stroke="#fff" stroke-width="1.5"/></svg>',
+    iconSize: [24, 32],
+    iconAnchor: [12, 30],
+    popupAnchor: [0, -28]
+  }),
+  tide: L.divIcon({
+    className: 'pin-icon',
+    html: '<svg viewBox="0 0 30 30" width="30" height="30"><circle cx="15" cy="15" r="13" style="fill:var(--tide)" stroke="#fff" stroke-width="1.5"/><path d="M4 16c2.2-3 4.4-3 6.6 0s4.4 3 6.6 0 4.4-3 6.6 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -15]
+  })
+};
+
+function siteSkeletonHtml(site) {
+  return `<div class="popup-card"><div class="popup-site-name">${site.label}</div><div class="loading">Loading…</div></div>`;
+}
+
+function siteErrorHtml(site) {
+  return `<div class="popup-card"><div class="popup-site-name">${site.label}</div><div class="loading">Could not load live data.</div></div>`;
+}
+
+function rainfallSiteHtml(site, current) {
+  const temp = current.temperature_2m !== undefined ? current.temperature_2m.toFixed(1) + ' °C' : '—';
+  const rain = current.precipitation !== undefined ? current.precipitation.toFixed(1) + ' mm' : '—';
+  const wind = current.wind_speed_10m !== undefined ? current.wind_speed_10m.toFixed(0) + ' km/h' : '—';
   return `
     <div class="popup-card">
+      <div class="popup-site-name">${site.label}</div>
       <div class="cond-label">Temperature</div><div class="cond-value">${temp}</div>
       <div class="cond-label">Rain right now</div><div class="cond-value">${rain}</div>
       <div class="cond-label">Wind speed</div><div class="cond-value">${wind}</div>
-      <div class="chart-wrap"><canvas id="popup-rain-chart"></canvas></div>
+      <div class="chart-wrap"><canvas class="popup-chart"></canvas></div>
     </div>
   `;
 }
 
-function buildTidePopupHtml(loc) {
-  const levels = lastMarine && lastMarine.hourly && lastMarine.hourly.sea_level_height_msl;
-  const now = levels && levels.length ? levels[0].toFixed(2) + ' m' : '—';
+function tideSiteHtml(site, seaLevel, marineNote) {
+  const now = seaLevel !== undefined ? seaLevel.toFixed(2) + ' m' : '—';
   return `
     <div class="popup-card">
-      <div class="cond-label">Sea level now (${loc.marine.label})</div><div class="cond-value">${now}</div>
-      <div class="chart-wrap"><canvas id="popup-tide-chart"></canvas></div>
-      <div class="caution">${loc.marineNote}</div>
+      <div class="popup-site-name">${site.label}</div>
+      <div class="cond-label">Sea level now</div><div class="cond-value">${now}</div>
+      <div class="chart-wrap"><canvas class="popup-chart"></canvas></div>
+      <div class="caution">${marineNote}</div>
     </div>
   `;
 }
 
-function renderWeatherPopupChart() {
-  const canvas = document.getElementById('popup-rain-chart');
-  if (!canvas || !lastWeather || !lastWeather.hourly) return;
-  if (popupWeatherChart) { popupWeatherChart.destroy(); popupWeatherChart = null; }
-  popupWeatherChart = new Chart(canvas.getContext('2d'), buildRainChartConfig(lastWeather));
-}
-
-function renderTidePopupChart() {
-  const canvas = document.getElementById('popup-tide-chart');
-  if (!canvas || !lastMarine || !lastMarine.hourly) return;
-  if (popupTideChart) { popupTideChart.destroy(); popupTideChart = null; }
-  popupTideChart = new Chart(canvas.getContext('2d'), buildTideChartConfig(lastMarine));
+async function loadSitePopup(site, marker, loc) {
+  const popup = marker.getPopup();
+  try {
+    let chartConfig;
+    if (site.type === 'rainfall') {
+      const weather = await fetchWeather(site);
+      if (!marker.isPopupOpen()) return;
+      popup.setContent(rainfallSiteHtml(site, weather.current || {}));
+      chartConfig = buildRainChartConfig(weather);
+    } else {
+      const marine = await fetchMarine(site);
+      if (!marker.isPopupOpen()) return;
+      const levels = marine.hourly && marine.hourly.sea_level_height_msl;
+      popup.setContent(tideSiteHtml(site, levels && levels.length ? levels[0] : undefined, loc.marineNote));
+      chartConfig = buildTideChartConfig(marine);
+    }
+    const popupEl = popup.getElement();
+    const canvas = popupEl ? popupEl.querySelector('.popup-chart') : null;
+    if (canvas) {
+      if (activeSiteChart) { activeSiteChart.destroy(); activeSiteChart = null; }
+      activeSiteChart = new Chart(canvas.getContext('2d'), chartConfig);
+    }
+  } catch (err) {
+    if (marker.isPopupOpen()) popup.setContent(siteErrorHtml(site));
+    console.error(err);
+  }
 }
 
 function initMap(loc) {
@@ -752,27 +830,26 @@ function initMap(loc) {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
   }).addTo(leafletMap);
 
-  const weatherMarker = L.marker([loc.weather.lat, loc.weather.lon]).addTo(leafletMap)
-    .bindPopup(buildWeatherPopupHtml, { className: 'app-popup' });
-  weatherMarker.on('popupopen', renderWeatherPopupChart);
-  weatherMarker.on('popupclose', () => { if (popupWeatherChart) { popupWeatherChart.destroy(); popupWeatherChart = null; } });
+  const sites = (loc.map && loc.map.sites) || [];
+  const markers = sites.map(site => {
+    const marker = L.marker([site.lat, site.lon], { icon: PIN_ICONS[site.type] }).addTo(leafletMap);
+    const popup = L.popup({ className: 'app-popup' }).setContent(siteSkeletonHtml(site));
+    marker.bindPopup(popup);
+    marker.on('popupopen', () => loadSitePopup(site, marker, loc));
+    marker.on('popupclose', () => { if (activeSiteChart) { activeSiteChart.destroy(); activeSiteChart = null; } });
+    return marker;
+  });
 
-  const tideMarker = L.marker([loc.marine.lat, loc.marine.lon]).addTo(leafletMap)
-    .bindPopup(() => buildTidePopupHtml(loc), { className: 'app-popup' });
-  tideMarker.on('popupopen', renderTidePopupChart);
-  tideMarker.on('popupclose', () => { if (popupTideChart) { popupTideChart.destroy(); popupTideChart = null; } });
-
-  const bounds = L.latLngBounds([
-    [loc.weather.lat, loc.weather.lon],
-    [loc.marine.lat, loc.marine.lon]
-  ]);
-  leafletMap.fitBounds(bounds, { padding: [40, 40] });
+  if (markers.length) {
+    const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+    leafletMap.fitBounds(bounds, { padding: [40, 40] });
+  }
 }
 
 async function loadDetail() {
   setLoadingState();
   try {
-    const [weather, marine] = await Promise.all([fetchWeather(currentLocation), fetchMarine(currentLocation)]);
+    const [weather, marine] = await Promise.all([fetchWeather(currentLocation.weather), fetchMarine(currentLocation.marine)]);
     lastWeather = weather;
     lastMarine = marine;
     renderConditions(weather, marine);
