@@ -40,7 +40,6 @@ This dashboard is the deliberately small first step: prove out a live-data dashb
 
 ## Immediate next steps
 - Confirm GitHub Pages is switched on and serving the site (Settings → Pages → branch `main`, folder `/root`).
-- If the dashboard file isn't named `index.html`, either rename it for a clean root URL or leave it under its current name (site still works, just at a longer URL).
 - Optionally add more locations or free metrics (see scaling section below) while still backend-free.
 - Revisit the Supabase-based architecture once ready to add private sensor data, history, or Claude-generated analysis.
 
