@@ -6,21 +6,21 @@
 <title>Live weather & tide</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Public+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js" integrity="sha512-Y51n9mtKTVBh3Jbx5pZSJNDDMyY+yGe77DGtBPzRlgsf/YLCh13kSZ3JmfHGzYFCmOndraf0sQgfM654b7dJ3w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   :root {
-    --bg: #EEF0F1;
+    --bg: #E4F0FC;
     --surface: #FFFFFF;
     --ink: #2D2E32;
     --ink-soft: #53565A;
     --ink-muted: #8B8E92;
-    --line: #DEE0E2;
-    --line-strong: #C7CACD;
+    --line: #C3DCF5;
+    --line-strong: #A8C9EC;
     --accent: #175787;
-    --accent-soft: #E3EDF3;
+    --accent-soft: #DCEBFA;
     --rain: #3E8DD6;
     --tide: #F288DE;
     --danger: #B23A2F;
@@ -49,11 +49,11 @@
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Public Sans', sans-serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 24px 64px; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 32px 32px 64px; }
   header.top {
     display: flex;
     justify-content: space-between;
@@ -65,7 +65,7 @@
     flex-wrap: wrap;
   }
   .brand {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', sans-serif;
     font-weight: 700;
     font-size: 26px;
     letter-spacing: -0.01em;
@@ -83,7 +83,7 @@
     white-space: nowrap;
   }
   button.refresh, button.back {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', sans-serif;
     font-weight: 600;
     font-size: 13px;
     border: 1px solid var(--line-strong);
@@ -94,8 +94,67 @@
     cursor: pointer;
   }
   button.refresh:focus-visible, button.back:focus-visible, .location-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--accent);
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { border-color: var(--accent); }
+  .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .settings-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 30, 50, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 2000;
+  }
+  .settings-panel { width: 100%; max-width: 420px; max-height: 80vh; overflow-y: auto; }
+  .settings-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .settings-location + .settings-location { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+  .settings-location-name {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .settings-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .settings-field input {
+    width: 90px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    text-align: right;
+  }
+  .settings-note { font-size: 11px; color: var(--ink-muted); margin-top: 4px; }
   h2.section-label {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', sans-serif;
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -107,8 +166,8 @@
   /* Front page: location cards */
   .locations-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
   }
   .location-card {
     font-family: inherit;
@@ -125,7 +184,7 @@
   }
   .location-card:hover { border-color: var(--accent); }
   .location-name {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', sans-serif;
     font-weight: 600;
     font-size: 18px;
   }
@@ -146,8 +205,8 @@
     font-family: 'IBM Plex Mono', monospace;
     font-size: 15px;
   }
-  .location-snapshot .loading { color: var(--ink-muted); font-family: 'Inter', sans-serif; font-size: 13px; }
-  .snapshot-unit { font-size: 11px; color: var(--ink-muted); font-family: 'Inter', sans-serif; }
+  .location-snapshot .loading { color: var(--ink-muted); font-family: 'Public Sans', sans-serif; font-size: 13px; }
+  .snapshot-unit { font-size: 11px; color: var(--ink-muted); font-family: 'Public Sans', sans-serif; }
   .location-cta {
     font-size: 12px;
     color: var(--accent);
@@ -284,9 +343,9 @@
   }
   .leaflet-popup-tip { background: var(--surface); }
   .pin-icon { background: none; border: none; }
-  .popup-card { font-family: 'Inter', sans-serif; min-width: 200px; }
+  .popup-card { font-family: 'Public Sans', sans-serif; min-width: 200px; }
   .popup-site-name {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', sans-serif;
     font-weight: 600;
     font-size: 14px;
     margin-bottom: 6px;
@@ -312,34 +371,6 @@
     display: none;
   }
   .loading { color: var(--ink-muted); font-size: 13px; }
-  .manual-alerts {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 14px;
-  }
-  .manual-alert-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-  }
-  .manual-alert-row input[type="text"] {
-    flex: 1;
-    min-width: 120px;
-    font-family: inherit;
-    font-size: 13px;
-    padding: 6px 10px;
-    border: 1px solid var(--line-strong);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--ink);
-  }
-  .manual-note {
-    font-size: 11px;
-    color: var(--ink-muted);
-    margin-top: 2px;
-  }
   footer {
     margin-top: 32px;
     font-size: 12px;
@@ -365,13 +396,29 @@
         <div class="brand">Live conditions</div>
         <div class="tagline">Pick a location to see live weather, rainfall, and tide data</div>
       </div>
+      <button class="icon-btn" id="alert-settings-btn" aria-label="Alert threshold settings" title="Alert threshold settings">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
     </header>
     <button class="alert-strip" id="alert-summary-strip" hidden></button>
     <h2 class="section-label">Locations</h2>
     <div class="locations-grid" id="locations-grid"></div>
     <footer>
-      Weather and rainfall data from Open-Meteo (BOM ACCESS-G model). Sea level data from Open-Meteo Marine API. Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
+      Weather and rainfall data from Open-Meteo (BOM ACCESS-G model). Sea level data from Open-Meteo Marine API. Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>.
     </footer>
+  </div>
+
+  <!-- ALERT SETTINGS PANEL -->
+  <div class="settings-backdrop" id="alert-settings-backdrop" hidden>
+    <div class="card settings-panel">
+      <div class="settings-panel-header">
+        <h2 class="section-label" style="margin:0;">Alert thresholds</h2>
+        <button class="icon-btn" id="alert-settings-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div id="alert-settings-body"></div>
+    </div>
   </div>
 
   <!-- DETAIL VIEW -->
@@ -393,19 +440,6 @@
     <div class="card" id="alerts-section" hidden style="margin-bottom:24px;">
       <h2 class="section-label">Alerts</h2>
       <div class="alert-badges" id="detail-alert-badges"></div>
-      <div class="manual-alerts">
-        <label class="manual-alert-row">
-          <input type="checkbox" id="toggle-river"> High river
-        </label>
-        <label class="manual-alert-row">
-          <input type="checkbox" id="toggle-flooding"> Local flooding
-        </label>
-        <label class="manual-alert-row">
-          <input type="checkbox" id="toggle-other"> Other
-          <input type="text" id="other-note" placeholder="Describe the alert" disabled>
-        </label>
-        <div class="manual-note">High river, local flooding, and other are manually set by a person, not live data — no live source is wired up for these yet. Saved only on this browser/device.</div>
-      </div>
     </div>
 
     <div class="detail-split">
@@ -453,7 +487,7 @@ const LOCATIONS = [
     weather: { lat: -37.8136, lon: 144.9631 },
     marine: { lat: -37.867, lon: 144.978, label: 'St Kilda' },
     marineNote: 'Modelled tide, not an official BOM tide table. Port Phillip Bay is a constrained coastline, so treat this as a rough guide.',
-    alerts: { enabled: true, tideThreshold: 0.5 },
+    alerts: { enabled: true, tideThreshold: 0.5, rainHourlyThreshold: 4 },
     map: {
       enabled: true,
       sites: [
@@ -471,6 +505,7 @@ const LOCATIONS = [
     weather: { lat: -33.8688, lon: 151.2093 },
     marine: { lat: -33.891, lon: 151.277, label: 'Bondi Beach' },
     marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.',
+    alerts: { enabled: true, tideThreshold: 0.5, rainHourlyThreshold: 4 },
     map: {
       enabled: true,
       sites: [
@@ -488,6 +523,7 @@ const LOCATIONS = [
     weather: { lat: -34.9285, lon: 138.6007 },
     marine: { lat: -34.7817, lon: 138.4875, label: 'Outer Harbor' },
     marineNote: 'Modelled tide, not an official BOM tide table. Gulf St Vincent is a constrained coastline, so treat this as a rough guide.',
+    alerts: { enabled: true, tideThreshold: 0.5, rainHourlyThreshold: 4 },
     map: {
       enabled: true,
       sites: [
@@ -505,6 +541,7 @@ const LOCATIONS = [
     weather: { lat: -31.9523, lon: 115.8613 },
     marine: { lat: -31.9959, lon: 115.7581, label: 'Cottesloe Beach' },
     marineNote: 'Modelled tide, not an official BOM tide table. Open coastline here, so this tends to be more reliable than an enclosed bay.',
+    alerts: { enabled: true, tideThreshold: 0.5, rainHourlyThreshold: 4 },
     map: {
       enabled: true,
       sites: [
@@ -522,6 +559,7 @@ const LOCATIONS = [
     weather: { lat: -27.4698, lon: 153.0251 },
     marine: { lat: -27.446, lon: 153.188, label: 'Manly, Moreton Bay' },
     marineNote: 'Modelled tide, not an official BOM tide table. Moreton Bay is a semi-enclosed bay, so treat this as a rough guide.',
+    alerts: { enabled: true, tideThreshold: 1.5, rainHourlyThreshold: 4 },
     map: {
       enabled: true,
       sites: [
@@ -540,48 +578,48 @@ let lastWeather = null;
 let lastMarine = null;
 
 const STORM_WEATHER_CODES = [95, 96, 99];
-const MANUAL_ALERTS_KEY = 'weatherDashboardManualAlerts';
+const ALERT_SETTINGS_KEY = 'weatherDashboardAlertSettings';
 
-function getManualAlerts(locId) {
-  let all = {};
-  try { all = JSON.parse(localStorage.getItem(MANUAL_ALERTS_KEY)) || {}; } catch (err) {}
-  return Object.assign({ river: false, flooding: false, otherEnabled: false, otherText: '' }, all[locId]);
+function getAlertSettings(loc) {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(ALERT_SETTINGS_KEY)) || {}; } catch (err) {}
+  const override = stored[loc.id] || {};
+  return {
+    rainHourlyThreshold: override.rainHourlyThreshold ?? loc.alerts.rainHourlyThreshold,
+    tideThreshold: override.tideThreshold ?? loc.alerts.tideThreshold
+  };
 }
 
-function setManualAlerts(locId, data) {
-  let all = {};
-  try { all = JSON.parse(localStorage.getItem(MANUAL_ALERTS_KEY)) || {}; } catch (err) {}
-  all[locId] = data;
-  localStorage.setItem(MANUAL_ALERTS_KEY, JSON.stringify(all));
+function setAlertSettings(locId, data) {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(ALERT_SETTINGS_KEY)) || {}; } catch (err) {}
+  stored[locId] = data;
+  localStorage.setItem(ALERT_SETTINGS_KEY, JSON.stringify(stored));
 }
 
 function computeAlerts(loc, weather, marine) {
   const alerts = [];
   if (!loc.alerts || !loc.alerts.enabled) return alerts;
+  const settings = getAlertSettings(loc);
 
   const precip = weather && weather.hourly && weather.hourly.precipitation;
   if (precip && precip.length) {
     const next24 = precip.slice(0, 24);
     const total = next24.reduce((sum, v) => sum + v, 0);
-    if (Math.max(...next24) >= 4 || total >= 25) alerts.push({ label: 'Heavy rain', manual: false });
+    if (Math.max(...next24) >= settings.rainHourlyThreshold || total >= 25) alerts.push({ label: 'Heavy rain' });
   }
 
   const codes = weather && weather.hourly && weather.hourly.weather_code;
   if (codes && codes.length) {
     const next24 = codes.slice(0, 24);
-    if (next24.some(c => STORM_WEATHER_CODES.includes(c))) alerts.push({ label: 'Storm', manual: false });
+    if (next24.some(c => STORM_WEATHER_CODES.includes(c))) alerts.push({ label: 'Storm' });
   }
 
   const seaLevels = marine && marine.hourly && marine.hourly.sea_level_height_msl;
   if (seaLevels && seaLevels.length) {
     const next48 = seaLevels.slice(0, 48);
-    if (Math.max(...next48) >= loc.alerts.tideThreshold) alerts.push({ label: 'High tide expected', manual: false });
+    if (Math.max(...next48) >= settings.tideThreshold) alerts.push({ label: 'High tide expected' });
   }
-
-  const manual = getManualAlerts(loc.id);
-  if (manual.river) alerts.push({ label: 'High river', manual: true });
-  if (manual.flooding) alerts.push({ label: 'Local flooding', manual: true });
-  if (manual.otherEnabled && manual.otherText.trim()) alerts.push({ label: manual.otherText.trim(), manual: true });
 
   return alerts;
 }
@@ -592,9 +630,7 @@ function escapeHtml(str) {
 
 function renderAlertBadges(container, alerts) {
   if (!container) return;
-  container.innerHTML = alerts.map(a =>
-    `<span class="alert-pill">${escapeHtml(a.label)}${a.manual ? ' (manually set)' : ''}</span>`
-  ).join('');
+  container.innerHTML = alerts.map(a => `<span class="alert-pill">${escapeHtml(a.label)}</span>`).join('');
 }
 
 const alertCounts = {};
@@ -638,6 +674,72 @@ document.getElementById('alert-summary-strip').addEventListener('click', () => {
       setTimeout(() => card.classList.remove('highlight-flash'), 1500);
     }
   });
+});
+
+/* ---------- Alert settings panel ---------- */
+
+function renderAlertSettingsPanel() {
+  const body = document.getElementById('alert-settings-body');
+  const alertLocations = LOCATIONS.filter(loc => loc.alerts && loc.alerts.enabled);
+
+  if (!alertLocations.length) {
+    body.innerHTML = '<div class="settings-note">No locations have alerts enabled yet.</div>';
+    return;
+  }
+
+  body.innerHTML = alertLocations.map(loc => {
+    const settings = getAlertSettings(loc);
+    return `
+      <div class="settings-location">
+        <div class="settings-location-name">${loc.name}</div>
+        <label class="settings-field">
+          Rain threshold (mm/hr)
+          <input type="number" min="0" step="0.5" id="setting-rain-${loc.id}" value="${settings.rainHourlyThreshold}">
+        </label>
+        <label class="settings-field">
+          High tide threshold (m)
+          <input type="number" min="0" step="0.1" id="setting-tide-${loc.id}" value="${settings.tideThreshold}">
+        </label>
+      </div>
+    `;
+  }).join('') + '<div class="settings-note">Changes apply immediately and are saved on this browser/device.</div>';
+
+  alertLocations.forEach(loc => {
+    const rainEl = document.getElementById('setting-rain-' + loc.id);
+    const tideEl = document.getElementById('setting-tide-' + loc.id);
+    const save = () => {
+      const rain = parseFloat(rainEl.value);
+      const tide = parseFloat(tideEl.value);
+      setAlertSettings(loc.id, {
+        rainHourlyThreshold: isNaN(rain) ? loc.alerts.rainHourlyThreshold : rain,
+        tideThreshold: isNaN(tide) ? loc.alerts.tideThreshold : tide
+      });
+      recomputeAlertsFor(loc);
+    };
+    rainEl.addEventListener('input', save);
+    tideEl.addEventListener('input', save);
+  });
+}
+
+function recomputeAlertsFor(loc) {
+  const cached = snapshotData[loc.id];
+  if (cached) updateAlertState(loc, computeAlerts(loc, cached.weather, cached.marine));
+  if (currentLocation && currentLocation.id === loc.id) refreshAlertBadges();
+}
+
+function openAlertSettings() {
+  renderAlertSettingsPanel();
+  document.getElementById('alert-settings-backdrop').hidden = false;
+}
+
+function closeAlertSettings() {
+  document.getElementById('alert-settings-backdrop').hidden = true;
+}
+
+document.getElementById('alert-settings-btn').addEventListener('click', openAlertSettings);
+document.getElementById('alert-settings-close').addEventListener('click', closeAlertSettings);
+document.getElementById('alert-settings-backdrop').addEventListener('click', e => {
+  if (e.target.id === 'alert-settings-backdrop') closeAlertSettings();
 });
 
 function fmtHour(iso) {
@@ -704,6 +806,8 @@ function updateLocalTime(loc) {
   if (el) el.textContent = formatLocalTime(loc.timezone);
 }
 
+const snapshotData = {};
+
 async function loadSnapshot(loc) {
   const el = document.getElementById('snapshot-' + loc.id);
   try {
@@ -717,6 +821,7 @@ async function loadSnapshot(loc) {
       <span>${c.temperature_2m !== undefined ? c.temperature_2m.toFixed(1) : '—'}<span class="snapshot-unit">°C</span></span>
       <span>${c.precipitation !== undefined ? c.precipitation.toFixed(1) : '—'}<span class="snapshot-unit">mm rain</span></span>
     `;
+    snapshotData[loc.id] = { weather, marine };
     updateAlertState(loc, computeAlerts(loc, weather, marine));
   } catch (err) {
     el.innerHTML = '<span class="loading">Unavailable right now</span>';
@@ -735,7 +840,6 @@ function openLocation(id) {
 
   const alertsEnabled = !!(currentLocation.alerts && currentLocation.alerts.enabled);
   document.getElementById('alerts-section').hidden = !alertsEnabled;
-  if (alertsEnabled) initManualAlertControls();
 
   const mapEnabled = !!(currentLocation.map && currentLocation.map.enabled);
   document.getElementById('detail-map-col').hidden = !mapEnabled;
@@ -746,35 +850,6 @@ function openLocation(id) {
   }
 
   loadDetail();
-}
-
-function initManualAlertControls() {
-  const manual = getManualAlerts(currentLocation.id);
-  const riverEl = document.getElementById('toggle-river');
-  const floodingEl = document.getElementById('toggle-flooding');
-  const otherEl = document.getElementById('toggle-other');
-  const otherNoteEl = document.getElementById('other-note');
-
-  riverEl.checked = manual.river;
-  floodingEl.checked = manual.flooding;
-  otherEl.checked = manual.otherEnabled;
-  otherNoteEl.value = manual.otherText;
-  otherNoteEl.disabled = !manual.otherEnabled;
-
-  function save() {
-    setManualAlerts(currentLocation.id, {
-      river: riverEl.checked,
-      flooding: floodingEl.checked,
-      otherEnabled: otherEl.checked,
-      otherText: otherNoteEl.value
-    });
-    refreshAlertBadges();
-  }
-
-  riverEl.onchange = save;
-  floodingEl.onchange = save;
-  otherEl.onchange = () => { otherNoteEl.disabled = !otherEl.checked; save(); };
-  otherNoteEl.oninput = save;
 }
 
 function refreshAlertBadges() {
@@ -888,14 +963,14 @@ let siteMarkers = [];
 const PIN_ICONS = {
   rainfall: L.divIcon({
     className: 'pin-icon',
-    html: '<svg viewBox="0 0 24 32" width="24" height="32"><path d="M12 1 C12 1 2 15 2 22 a10 10 0 0 0 20 0 C22 15 12 1 12 1 Z" style="fill:var(--rain)" stroke="#fff" stroke-width="1.5"/></svg>',
-    iconSize: [24, 32],
-    iconAnchor: [12, 30],
-    popupAnchor: [0, -28]
+    html: '<svg viewBox="0 0 24 32" width="26" height="34"><path d="M12 1.5 C12 1.5 3 14.5 3 21.5 a9 9 0 0 0 18 0 C21 14.5 12 1.5 12 1.5 Z" style="fill:var(--rain)" stroke="#fff" stroke-width="2"/><circle cx="9" cy="18" r="2" fill="#fff" opacity="0.55"/></svg>',
+    iconSize: [26, 34],
+    iconAnchor: [13, 32],
+    popupAnchor: [0, -30]
   }),
   tide: L.divIcon({
     className: 'pin-icon',
-    html: '<svg viewBox="0 0 30 30" width="30" height="30"><circle cx="15" cy="15" r="13" style="fill:var(--tide)" stroke="#fff" stroke-width="1.5"/><path d="M4 16c2.2-3 4.4-3 6.6 0s4.4 3 6.6 0 4.4-3 6.6 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+    html: '<svg viewBox="0 0 30 30" width="30" height="30"><circle cx="15" cy="15" r="12" style="fill:var(--tide)" stroke="#fff" stroke-width="2"/><path d="M5 14c2-2.6 4-2.6 6 0s4 2.6 6 0 4-2.6 6 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M5 19c2-2.2 4-2.2 6 0s4 2.2 6 0 4-2.2 6 0" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/></svg>',
     iconSize: [30, 30],
     iconAnchor: [15, 15],
     popupAnchor: [0, -15]
@@ -934,7 +1009,10 @@ function initMiniMap(loc) {
     keyboard: false,
     tap: false
   });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(miniMap);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 18,
+    subdomains: 'abcd'
+  }).addTo(miniMap);
 
   const sites = (loc.map && loc.map.sites) || [];
   const markers = sites.map(site =>
@@ -1016,9 +1094,10 @@ function initMap(loc) {
   siteMarkers = [];
 
   leafletMap = L.map('map');
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 18,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
   }).addTo(leafletMap);
 
   const sites = (loc.map && loc.map.sites) || [];

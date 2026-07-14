@@ -12,17 +12,18 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
   - Weather + rainfall forecast: Open-Meteo forecast API (BOM ACCESS-G model), free, no API key.
   - Sea level: Open-Meteo Marine API, free, no API key. Modelled, not an official BOM tide table — coastlines on an enclosed bay/gulf (Melbourne/Port Phillip Bay, Brisbane/Moreton Bay, Adelaide/Gulf St Vincent) are a rougher estimate; open coastlines (Sydney, Perth) tend to be more reliable.
 - Adding another location = adding one entry to the `LOCATIONS` list in the script (name, weather coordinates, a coastal point for tide data).
-- Charts drawn with Chart.js; the map view uses Leaflet with OpenStreetMap tiles — both loaded from a CDN, both free with no API key or account, both pinned with Subresource Integrity (SRI) hashes so the page only runs the exact script/stylesheet bytes it expects.
+- Charts drawn with Chart.js; the map view uses Leaflet with CARTO Voyager tiles (built on OpenStreetMap data) — both loaded from a CDN, both free with no API key or account, both pinned with Subresource Integrity (SRI) hashes so the page only runs the exact script/stylesheet bytes it expects.
 - Hosted on GitHub Pages, deployed automatically by pushing to `main`.
 - Note: live data won't load in Claude's in-chat preview — that sandbox blocks calls to outside APIs for security. It works correctly once opened as a real file or hosted on GitHub Pages (confirmed working).
 
-## Alerts (Melbourne only so far)
+## Alerts (all 5 cities)
 - Front-page badges and a detail-view "Alerts" card show when conditions cross a threshold:
-  - **Heavy rain** — any forecast hour ≥ 4mm, or ≥ 25mm over 24h (from the existing Open-Meteo hourly forecast).
+  - **Heavy rain** — any forecast hour ≥ the rain threshold (default 4mm), or ≥ 25mm over 24h (from the existing Open-Meteo hourly forecast).
   - **Storm** — WMO weather codes 95/96/99 in the next 24h.
-  - **High tide expected** — modelled sea level forecast to peak ≥ 0.5m in the next 48h. This threshold is a starting point — tune it once there's been time to see it run against real conditions.
-- **High river**, **local flooding**, and a free-text **other** alert are manual toggles (no live source wired up yet) — set by a person, saved to `localStorage`, clearly labelled "(manually set)" wherever they show up so it's honest about what's live data vs. judgement call. Only persists on one browser/device until there's a real backend.
-- Enabling alerts for another location is one config entry: `alerts: { enabled: true, tideThreshold: <meters> }` on that location's object.
+  - **High tide expected** — modelled sea level forecast to peak ≥ the tide threshold in the next 48h.
+- Both thresholds are per-city and user-adjustable: click the bell icon at the top right of the front page to open **Alert thresholds**, which lists every alert-enabled city with a rain (mm/hr) and tide (m) input. Changes save to `localStorage` and apply immediately — badges, sorting, and the summary strip all recompute from the last-fetched data with no refetch needed.
+- Defaults are 0.5m tide / 4mm rain for Melbourne, Sydney, Adelaide, and Perth; Brisbane defaults to 1.5m tide since its Moreton Bay readings run structurally higher (~1.2m vs ~0.1–0.6m elsewhere) — using the same 0.5m there would fire constantly. All defaults are just starting points; tune them via the bell icon once you've watched them run against real conditions for a bit.
+- Enabling alerts for another location is one config entry: `alerts: { enabled: true, tideThreshold: <meters>, rainHourlyThreshold: <mm> }` on that location's object.
 
 ## Map view (all 5 cities)
 - Opening a city shows a two-column detail view: the interactive map (Leaflet + OpenStreetMap, no API key) on the left, fixed in place, and a scrollable data panel on the right — current conditions, a "Sites" list, and the full 48h charts. The map never moves as you scroll the right-hand panel. On narrow/mobile screens this stacks vertically instead (map on top, unfixed, details below in normal page flow).
@@ -34,11 +35,13 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 
 ## Front page: local time, sorting, and alert summary
 - Each city panel shows its current local time (e.g. "2:34 PM local"), computed from its IANA timezone (e.g. `Australia/Adelaide`) so daylight saving is handled automatically without any manual offset math. Updates every 30s.
-- Panels for cities with active alerts float to the front of the grid (most active alerts first), everything else keeps its normal order behind them. Since alerts are Melbourne-only for now, in practice this just means Melbourne jumps to the front when it has an active alert — the sort itself is generic and will apply to any city the moment alerts are enabled for it.
+- Panels for cities with active alerts float to the front of the grid (most active alerts first), everything else keeps its normal order behind them.
 - A one-line strip above the grid ("N cities have active alerts right now.") appears only when at least one alert is active anywhere, and is hidden entirely otherwise. Clicking it scrolls to and briefly highlights the affected panel(s).
 
 ## Design
-- Custom design system (not a template): navy/royal-blue/pink brand palette on a charcoal-and-grey neutral base, Space Grotesk (headings) + Inter (body) + IBM Plex Mono (numeric readings), inspired by field survey / gauge-board aesthetics.
+- Custom design system (not a template): a blue-forward palette (light-blue page background, navy/royal-blue accent, pink for tide) on a charcoal-and-grey neutral base, Sora (headings) + Public Sans (body) + IBM Plex Mono (numeric readings), inspired by field survey / gauge-board aesthetics.
+- Map tiles use CARTO Voyager (built on OpenStreetMap data, free, no API key) rather than default OSM tiles, for a cleaner, more legible basemap that leans into the blue-water theme. Pin icons (rainfall droplet, tide wave) are custom SVGs in the app's own colors.
+- Page content runs wider than a typical article layout (1440px) so the location grid and detail view have more room to breathe on wide screens.
 - Dark mode supported automatically via `prefers-color-scheme`.
 
 ## Where this came from
@@ -57,15 +60,13 @@ This dashboard is the deliberately small first step: prove out a live-data dashb
 - Any paid or key-locked API (e.g. WillyWeather for better tide accuracy, or a real river-level feed like Victoria's WMIS) — an API key embedded in a public page's source is visible to anyone, so keyed APIs must be called from a server that holds the key privately, not from the browser directly.
 - Matter's own private sensor data (stormwater pits, bridges) — same reasoning; private data can't be fetched straight into a public page.
 - Any history or trend analysis ("how has this changed over the past week", "flag when multiple signals agree") — the current dashboard has no memory between visits; this needs somewhere to store past readings and logic to run over them.
-- Sharing manual alert toggles across visitors/devices — they currently live in one browser's `localStorage`; anything shared needs a real datastore, at which point the toggles should also gain some access control since anyone can currently flip them.
+- Sharing alert threshold settings across visitors/devices — they currently live in one browser's `localStorage`; anything shared needs a real datastore.
 - Claude-powered analysis or warning text — same key-exposure issue as paid APIs; an Anthropic API key can't live in public page source either.
 
 **When that threshold is hit**: the backend discussed earlier (Supabase — Postgres database + auto-generated API + mobile-ready client libraries, free to start) is the planned next layer. This dashboard becomes the frontend; nothing built so far needs to be thrown away.
 
 ## Immediate next steps
-- Watch the heavy-rain/storm/tide alert thresholds against real conditions for a bit and tune them if they're too sensitive or not sensitive enough.
-- Decide if/when manual alert toggles need real access control, before they're ever backed by something shared.
-- Extend alerts to Sydney, Adelaide, Perth, and Brisbane once the Melbourne version has been used for a while — the map view is already live for all 5.
+- Watch the alert thresholds against real conditions for a bit and tune them (via the bell icon) if they're too sensitive or not sensitive enough — several cities are showing "High tide expected" at the current defaults, which is expected given how tide peaks fluctuate over a 48h window, but worth adjusting per city as real behavior becomes clear.
 - Revisit the Supabase-based architecture once ready to add private sensor data, history, river-level data, or Claude-generated analysis.
 
 ## Constraints to keep in mind
