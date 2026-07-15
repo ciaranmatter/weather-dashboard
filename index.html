@@ -404,7 +404,7 @@
     <h2 class="section-label">Locations</h2>
     <div class="locations-grid" id="locations-grid"></div>
     <footer>
-      Weather and rainfall data from Open-Meteo (BOM ACCESS-G model). Sea level data from Open-Meteo Marine API. Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>.
+      Weather and rainfall data from Open-Meteo. Sea level data from Open-Meteo Marine API. Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>.
     </footer>
   </div>
 
@@ -473,7 +473,7 @@
     </div>
 
     <footer>
-      Weather and rainfall data from Open-Meteo (BOM ACCESS-G model). Sea level data from Open-Meteo Marine API. Refreshes only when you click Refresh.
+      Weather and rainfall data from Open-Meteo. Sea level data from Open-Meteo Marine API. Refreshes only when you click Refresh.
     </footer>
   </div>
 </div>
@@ -575,15 +575,15 @@ const LOCATIONS = [
     name: 'Ho Chi Minh City',
     timezone: 'Asia/Ho_Chi_Minh',
     weather: { lat: 10.7769, lon: 106.7009 },
-    marine: { lat: 10.6997, lon: 106.7300, label: 'Nhà Bè' },
-    marineNote: 'Modelled tide, not an official tide table. The Saigon River is a highly constrained tidal waterway reaching the East Sea via the Cần Giờ estuary, so treat this as a rough guide.',
+    marine: { lat: 10.3460, lon: 107.0843, label: 'Vũng Tàu' },
+    marineNote: 'Modelled tide, not an official tide table. The Saigon River itself has no reliable tidal model coverage this far inland, so this uses Vũng Tàu, the nearest open-coast point near the river’s mouth into the East Sea, as an estimate.',
     alerts: { enabled: true, tideThreshold: 0.5, rainHourlyThreshold: 4 },
     map: {
       enabled: true,
       sites: [
         { type: 'rainfall', label: 'District 1 (CBD)', lat: 10.7769, lon: 106.7009 },
         { type: 'rainfall', label: 'Tan Son Nhat Airport', lat: 10.8188, lon: 106.6520 },
-        { type: 'tide', label: 'Nhà Bè', lat: 10.6997, lon: 106.7300 },
+        { type: 'tide', label: 'Vũng Tàu', lat: 10.3460, lon: 107.0843 },
         { type: 'tide', label: 'Cần Giờ', lat: 10.4059, lon: 106.9556 }
       ]
     }
