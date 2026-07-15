@@ -1,22 +1,22 @@
 # Live weather & tide dashboard
 
 ## What this is
-A multi-location dashboard showing live weather, rainfall forecast, and modelled sea level, with front-page alert badges and a multi-site map view. Currently covers Melbourne, Sydney, Adelaide, Perth, and Brisbane, with a front page to pick a location and a detail view for live conditions. Built as a simple, zero-backend first step, part of a larger idea for Matter to eventually build flood-risk warnings. Company branding is intentionally left off the page itself for now.
+A multi-location dashboard showing live weather, rainfall forecast, and modelled sea level, with front-page alert badges and a multi-site map view. Currently covers Melbourne, Sydney, Adelaide, Perth, Brisbane, and Ho Chi Minh City, with a front page to pick a location and a detail view for live conditions. Built as a simple, zero-backend first step, part of a larger idea for Matter to eventually build flood-risk warnings. Company branding is intentionally left off the page itself for now.
 
 Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 
 ## How it works
 - One static HTML file (`index.html`), no build step, no server.
-- Front page shows a card per location (Melbourne, Sydney, Adelaide, Perth, Brisbane) with a live snapshot; clicking one opens the full detail view for that city.
+- Front page shows a card per location with a live snapshot; clicking one opens the full detail view for that city.
 - Fetches directly from the browser, per location:
-  - Weather + rainfall forecast: Open-Meteo forecast API (BOM ACCESS-G model), free, no API key.
-  - Sea level: Open-Meteo Marine API, free, no API key. Modelled, not an official BOM tide table — coastlines on an enclosed bay/gulf (Melbourne/Port Phillip Bay, Brisbane/Moreton Bay, Adelaide/Gulf St Vincent) are a rougher estimate; open coastlines (Sydney, Perth) tend to be more reliable.
+  - Weather + rainfall forecast: Open-Meteo forecast API (BOM ACCESS-G model for Australian cities), free, no API key.
+  - Sea level: Open-Meteo Marine API, free, no API key. Modelled, not an official tide table — coastlines on an enclosed bay/gulf/river (Melbourne/Port Phillip Bay, Brisbane/Moreton Bay, Adelaide/Gulf St Vincent, Ho Chi Minh City/Saigon River estuary) are a rougher estimate; open coastlines (Sydney, Perth) tend to be more reliable. The Marine API can also return `null` for specific hours/sites it has no coverage for (seen at Ho Chi Minh City's Nhà Bè site, likely because a river point isn't well covered by the ocean model grid) — the app shows "—" rather than crashing when that happens.
 - Adding another location = adding one entry to the `LOCATIONS` list in the script (name, weather coordinates, a coastal point for tide data).
 - Charts drawn with Chart.js; the map view uses Leaflet with CARTO Voyager tiles (built on OpenStreetMap data) — both loaded from a CDN, both free with no API key or account, both pinned with Subresource Integrity (SRI) hashes so the page only runs the exact script/stylesheet bytes it expects.
 - Hosted on GitHub Pages, deployed automatically by pushing to `main`.
 - Note: live data won't load in Claude's in-chat preview — that sandbox blocks calls to outside APIs for security. It works correctly once opened as a real file or hosted on GitHub Pages (confirmed working).
 
-## Alerts (all 5 cities)
+## Alerts (all cities)
 - Front-page badges and a detail-view "Alerts" card show when conditions cross a threshold:
   - **Heavy rain** — any forecast hour ≥ the rain threshold (default 4mm), or ≥ 25mm over 24h (from the existing Open-Meteo hourly forecast).
   - **Storm** — WMO weather codes 95/96/99 in the next 24h.
@@ -25,13 +25,13 @@ Live at: **https://ciaranmatter.github.io/weather-dashboard/**
 - Defaults are 0.5m tide / 4mm rain for Melbourne, Sydney, Adelaide, and Perth; Brisbane defaults to 1.5m tide since its Moreton Bay readings run structurally higher (~1.2m vs ~0.1–0.6m elsewhere) — using the same 0.5m there would fire constantly. All defaults are just starting points; tune them via the bell icon once you've watched them run against real conditions for a bit.
 - Enabling alerts for another location is one config entry: `alerts: { enabled: true, tideThreshold: <meters>, rainHourlyThreshold: <mm> }` on that location's object.
 
-## Map view (all 5 cities)
+## Map view (all cities)
 - Opening a city shows a two-column detail view: the interactive map (Leaflet + OpenStreetMap, no API key) on the left, fixed in place, and a scrollable data panel on the right — current conditions, a "Sites" list, and the full 48h charts. The map never moves as you scroll the right-hand panel. On narrow/mobile screens this stacks vertically instead (map on top, unfixed, details below in normal page flow).
 - Each city has 4 pins — 2 rainfall sites and 2 tide sites — rather than one aggregated view for the whole city. Rainfall pins are droplet-shaped in the app's blue; tide pins are wave-shaped in the app's pink, so the two types are tellable apart by shape as well as color.
 - The "Sites" list in the data panel mirrors the pins, showing each site's current key reading (rain amount or sea level) fetched eagerly on load. Clicking a site in the list pans the map to and opens that pin's popup (with its full reading plus a short-term chart); clicking a pin on the map highlights the matching list entry — either direction works.
 - No pin exists yet for river level — there's no live source for it, and an empty map is more honest than a pin showing fake data.
 - Enabling the map for another location is one config entry: `map: { enabled: true, sites: [...] }` on that location's object, where each site is `{ type: 'rainfall' | 'tide', label, lat, lon }`.
-- Front-page cards also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive detail view. Fine for 5 cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
+- Front-page cards also show a small static preview of that same map (same pins, smaller icons) — all interaction disabled (no drag/zoom/scroll), so it reads as an image; clicking anywhere on the card, including the preview map, opens the full interactive detail view. Fine for a handful of cities loading tiles up front; if the location list grows to a dozen+, worth revisiting lazy-loading these as they scroll into view.
 
 ## Front page: local time, sorting, and alert summary
 - Each city panel shows its current local time (e.g. "2:34 PM local"), computed from its IANA timezone (e.g. `Australia/Adelaide`) so daylight saving is handled automatically without any manual offset math. Updates every 30s.
